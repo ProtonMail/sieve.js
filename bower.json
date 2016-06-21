@@ -1,0 +1,15 @@
+{
+  "name": "sieve.js",
+  "homepage": "https://github.com/ProtonMail/sieve.js",
+  "authors": [],
+  "description": "Javascript library to wrap sieve configuration",
+  "main": "sieve.js",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
