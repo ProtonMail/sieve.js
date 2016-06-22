@@ -43,8 +43,8 @@
         "!is": "is not exactly",
         "matches": "matches",
         "!matches": "does not match",
-        "begins": "begins with",
-        "!begins": "does not begin with",
+        "starts": "begins with",
+        "!starts": "does not begin with",
         "ends": "ends with",
         "!ends": "does not end with"
     };
@@ -132,37 +132,53 @@
         for (var index in simple.Conditions)
         {
             condition = simple.Conditions[index];
+            var comparator = condition.Comparator.value;
             var test = null;
             var negate = false;
+
+            switch (comparator)
+            {
+                case "contains":
+                case "is":
+                case "matches":
+                case "starts":
+                case "ends":
+                    break;
+
+                case "!contains":
+                case "!is":
+                case "!matches":
+                case "!starts":
+                case "!ends":
+                    comparator = comparator.substring(1);
+                    negate = true;
+                    break;
+
+                default:
+                    throw { name: 'InvalidInput', message: 'Unrecognized simple condition: ' + condition.Comparator.value};
+            }
 
             for (var v in condition.Values)
             {
                 var value = condition.Values[v];
                 // Escape on Simple rep. "matches", "begins" and "ends" which maps to Tree "Matches"
-                switch (condition.Comparator.value)
+                switch (comparator)
                 {
                     case "starts":
-                        condition.Comparator.value = "matches";
+                        comparator = "matches";
                         value = escapeCharacters(value);
                         condition.Values[v] = "".concat(value, "*");
                         break;
 
                     case "ends":
-                        condition.Comparator.value = "matches";
+                        comparator = "matches";
                         value = escapeCharacters(value);
                         condition.Values[v] = "".concat("*", value);
                         break;
-
-                    case "!contains":
-                    case "!is":
-                    case "!matches":
-                    case "!starts":
-                    case "!ends":
-                        negate = true;
                 }
             }
 
-            var match = MATCH_KEYS[condition.Comparator.value];
+            var match = MATCH_KEYS[comparator];
             var values = unique(condition.Values);
 
             switch(condition.Type.value)
@@ -221,8 +237,9 @@
 
         tree = validateTree(tree);
 
-        simple.Operator.value = invert(OPERATOR_KEYS)[tree.If.Type];
-        simple.Operator.label = LABEL_KEYS[simple.Operator.value];
+        operator = invert(OPERATOR_KEYS)[tree.If.Type];
+        simple.Operator.label = LABEL_KEYS[operator];
+        simple.Operator.value = operator;
 
         conditions = iterateCondition(tree.If.Tests);
         simple.Conditions = simple.Conditions.concat(conditions);
@@ -307,14 +324,14 @@
                     break;
             }
 
-            if (type !== "attachments") {
-                comparator = buildSimpleComparator(element.Match.Type);
-                params = {
-                    "Comparator": comparator,
-                    "Values": element.Keys
-                };
+            if (type === "attachments") {
+                comparator = buildSimpleComparator("Contains", negate);
+            } else {
+                comparator = buildSimpleComparator(element.Match.Type, negate);
             }
+
             params = {
+                "Comparator": comparator,
                 "Values": element.Keys
             };
 
@@ -565,8 +582,14 @@
 
     function buildSimpleComparator(comparator, negate) {
         comparator = invert(MATCH_KEYS)[comparator];
+
+        if (comparator === null || comparator === undefined) {
+            throw { name: 'InvalidInput', message: 'Invalid match keys' };
+        }
+
         if (negate) comparator = "!" + comparator;
-        return comparator;
+
+        return buildLabelValueObject(comparator);
     }
 
     function buildLabelValueObject(value) {

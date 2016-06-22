@@ -17,19 +17,22 @@ var Test = (function() {
             "If": {
                 "Tests": [
                     {
-                        "Headers": [
-                            "Subject"
-                        ],
-                        "Keys": [
-                            "Subject1"
-                        ],
-                        "Match": {
-                            "Type": "Contains"
+                        "Test": {
+                            "Headers": [
+                                "Subject"
+                            ],
+                            "Keys": [
+                                "Subject1"
+                            ],
+                            "Match": {
+                                "Type": "Contains"
+                            },
+                            "Format": {
+                                "Type": "UnicodeCaseMap"
+                            },
+                            "Type": "Header"
                         },
-                        "Format": {
-                            "Type": "UnicodeCaseMap"
-                        },
-                        "Type": "Header"
+                        "Type": "Not"
                     },
                     {
                         "Headers": [
@@ -41,7 +44,7 @@ var Test = (function() {
                             "Recipient1"
                         ],
                         "Match": {
-                            "Type": "Contains"
+                            "Type": "Is"
                         },
                         "Format": {
                             "Type": "UnicodeCaseMap"
@@ -50,16 +53,39 @@ var Test = (function() {
                         "AddressPart": {
                             "Type": "All"
                         }
+                    },
+                    {
+                        "Test": {
+                            "Headers": [
+                                "To",
+                                "Cc",
+                                "Bcc"
+                            ],
+                            "Keys": [
+                                "Recipient2"
+                            ],
+                            "Match": {
+                                "Type": "Matches"
+                            },
+                            "Format": {
+                                "Type": "UnicodeCaseMap"
+                            },
+                            "Type": "Address",
+                            "AddressPart": {
+                                "Type": "All"
+                            }
+                        },
+                        "Type": "Not"
                     },
                     {
                         "Headers": [
                             "From"
                         ],
                         "Keys": [
-                            "Sender1"
+                            "Sender1*"
                         ],
                         "Match": {
-                            "Type": "Contains"
+                            "Type": "Matches"
                         },
                         "Format": {
                             "Type": "UnicodeCaseMap"
@@ -70,10 +96,34 @@ var Test = (function() {
                         }
                     },
                     {
-                        "Headers": [
-                            "X-Attached"
-                        ],
-                        "Type": "Exists"
+                        "Test": {
+                            "Headers": [
+                                "From"
+                            ],
+                            "Keys": [
+                                "*Sender2"
+                            ],
+                            "Match": {
+                                "Type": "Matches"
+                            },
+                            "Format": {
+                                "Type": "UnicodeCaseMap"
+                            },
+                            "Type": "Address",
+                            "AddressPart": {
+                                "Type": "All"
+                            }
+                        },
+                        "Type": "Not"
+                    },
+                    {
+                        "Test": {
+                            "Headers": [
+                                "X-Attached"
+                            ],
+                            "Type": "Exists"
+                        },
+                        "Type": "Not"
                     }
                 ],
                 "Type": "AllOf"
@@ -137,8 +187,8 @@ var Test = (function() {
                 },
                 "Comparator":
                 {
-                    "label": "contains",
-                    "value": "contains"
+                    "label": "does not contain",
+                    "value": "!contains"
                 },
                 "Values": ["Subject1"],
                 "value": ""
@@ -151,10 +201,24 @@ var Test = (function() {
                 },
                 "Comparator":
                 {
-                    "label": "contains",
-                    "value": "contains"
+                    "label": "is exactly",
+                    "value": "is"
                 },
                 "Values": ["Recipient1"],
+                "value": ""
+            },
+            {
+                "Type":
+                {
+                    "label": "Recipient",
+                    "value": "recipient"
+                },
+                "Comparator":
+                {
+                    "label": "does not match",
+                    "value": "!matches"
+                },
+                "Values": ["Recipient2"],
                 "value": ""
             },
             {
@@ -165,10 +229,24 @@ var Test = (function() {
                 },
                 "Comparator":
                 {
-                    "label": "contains",
-                    "value": "contains"
+                    "label": "begins with",
+                    "value": "starts"
                 },
                 "Values": ["Sender1"],
+                "value": ""
+            },
+            {
+                "Type":
+                {
+                    "label": "Sender",
+                    "value": "sender"
+                },
+                "Comparator":
+                {
+                    "label": "does not end with",
+                    "value": "!ends"
+                },
+                "Values": ["Sender2"],
                 "value": ""
             },
             {
@@ -179,8 +257,8 @@ var Test = (function() {
                 },
                 "Comparator":
                 {
-                    "label": "contains",
-                    "value": "contains"
+                    "label": "does not contain",
+                    "value": "!contains"
                 },
                 "Values": [],
                 "value": ""

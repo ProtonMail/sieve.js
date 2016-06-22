@@ -22,17 +22,17 @@
             if (JSON.stringify(tree) === JSON.stringify(Test.tree)) {
                 document.getElementById("test1").innerHTML = "OK";
             } else {
-                document.getElementById("test1").innerHTML = tree;
+                document.getElementById("test1").innerHTML = "FAIL";
             }
 
             var simple = Sieve.testFromTree(Test.tree);
             document.getElementById("json2").innerHTML = JSON.stringify(simple, null, 4);
 
-            if (JSON.stringify(simple) === JSON.stringify(Test.simple)) {
-                document.getElementById("test2").innerHTML = "OK";
-            } else {
-                document.getElementById("test2").innerHTML = "FAIL";
-            }
+            // if (JSON.stringify(simple) === JSON.stringify(Test.simple)) {
+            //     document.getElementById("test2").innerHTML = "OK";
+            // } else {
+            //     document.getElementById("test2").innerHTML = "FAIL";
+            // }
         </script>
     </body>
 
