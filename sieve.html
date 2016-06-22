@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+
+<html>
+
+    <head>
+        <title>sieve.js</title>
+        <script type="text/javascript" src="bower_components/angular/angular.min.js"></script>
+        <script type="text/javascript" src="sieve.js"></script>
+        <script type="text/javascript" src="test.js"></script>
+    </head>
+
+    <body>
+        <pre id="json1"></pre>
+        <p id="test1"></p>
+        <br>
+        <pre id="json2"></pre>
+        <p id="test2"></p>
+        <script type="text/javascript">
+            var tree = Sieve.testToTree(Test.simple);
+            document.getElementById("json1").innerHTML = JSON.stringify(tree, null, 4);
+
+            if (JSON.stringify(tree) === JSON.stringify(Test.tree)) {
+                document.getElementById("test1").innerHTML = "OK";
+            } else {
+                document.getElementById("test1").innerHTML = tree;
+            }
+
+            var simple = Sieve.testFromTree(Test.tree);
+            document.getElementById("json2").innerHTML = JSON.stringify(simple, null, 4);
+
+            if (JSON.stringify(simple) === JSON.stringify(Test.simple)) {
+                document.getElementById("test2").innerHTML = "OK";
+            } else {
+                document.getElementById("test2").innerHTML = "FAIL";
+            }
+        </script>
+    </body>
+
+</html>

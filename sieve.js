@@ -1,5 +1,5 @@
 /*
- * libsieve.js
+ * sieve.js
  * Sieve/Tree representation builder
  */
 
@@ -27,211 +27,210 @@
 
     var OPERATOR_KEYS = {
         "all": "AllOf",
-        "any" : "AnyOf"
+        "any": "AnyOf"
+    };
+
+    var LABEL_KEYS = {
+        "all": "All",
+        "any": "Any",
+        "subject": "Subject",
+        "sender": "Sender",
+        "recipient": "Recipient",
+        "attachments": "Attachments",
+        "contains": "contains",
+        "!contains": "does not contain",
+        "is": "is exactly",
+        "!is": "is not exactly",
+        "matches": "matches",
+        "!matches": "does not match",
+        "begins": "begins with",
+        "!begins": "does not begin with",
+        "ends": "ends with",
+        "!ends": "does not end with"
     };
 
     function escapeCharacters(text) {
         return text.replace(/([*?])/g, "\\\\$1");
     }
 
-    function validateModal(modal)
+    function validateSimpleRepresentation(simple)
     {
         var pass = true;
 
-        pass = pass && modal.hasOwnProperty('Operator');
-        pass = pass && modal.hasOwnProperty('Conditions');
-        pass = pass && modal.hasOwnProperty('Actions');
+        pass = pass && simple.hasOwnProperty('Operator');
+        pass = pass && simple.hasOwnProperty('Conditions');
+        pass = pass && simple.hasOwnProperty('Actions');
 
         if (!pass) {
-            throw { name: 'InvalidInput', message: 'Invalid modal keys' };
+            throw { name: 'InvalidInput', message: 'Invalid simple keys' };
         }
 
-        // pass = pass && modal.Operator instanceof String;
-        pass = pass && modal.Conditions instanceof Array;
-        pass = pass && modal.Actions instanceof Array;
+        pass = pass && simple.Operator   instanceof Object;
+        pass = pass && simple.Conditions instanceof Array;
+        pass = pass && simple.Actions    instanceof Object;
 
         if (!pass) {
-            throw { name: 'InvalidInput', message: 'Invalid modal data types' };
+            throw { name: 'InvalidInput', message: 'Invalid simple data types' };
         }
 
-        for (var index in modal.Conditions) {
-            var condition = modal.Conditions[index];
+        pass = pass && simple.Operator.hasOwnProperty('label');
+        pass = pass && simple.Operator.hasOwnProperty('value');
 
-            pass = pass && condition.hasOwnProperty('Not');
+        if (!pass) {
+            throw { name: 'InvalidInput', message: 'Invalid simple operator' };
+        }
+
+        for (var index in simple.Conditions) {
+            var condition = simple.Conditions[index];
+
             pass = pass && condition.hasOwnProperty('Type');
+            pass = pass && condition.Type.hasOwnProperty('label');
+            pass = pass && condition.Type.hasOwnProperty('value');
 
-            if (pass) {
-                if (condition.Type !== "attachments") {
-                    pass = pass && condition.hasOwnProperty('Comparator');
-                    pass = pass && condition.hasOwnProperty('Values');
-                }
-            }
-        }
+            pass = pass && condition.hasOwnProperty('Comparator');
+            pass = pass && condition.Comparator.hasOwnProperty('label');
+            pass = pass && condition.Comparator.hasOwnProperty('value');
 
-        for (index in modal.Actions) {
-            var action = modal.Actions[index];
-            pass = pass && action.hasOwnProperty('Type');
-
-            if (pass) {
-                switch (action.Type) {
-                    case "labels":
-                        pass = pass && action.hasOwnProperty('Labels');
-                        break;
-
-                    case "move":
-                        pass = pass && action.hasOwnProperty('Folder');
-                        break;
-
-                    case "mark":
-                        pass = pass && action.hasOwnProperty('Read');
-                        pass = pass && action.hasOwnProperty('Starred');
-                        break;
-                }
-            }
+            pass = pass && condition.hasOwnProperty('Values');
         }
 
         if (!pass) {
-            throw { name: 'InvalidInput', message: 'Invalid modal data' };
+            throw { name: 'InvalidInput', message: 'Invalid simple conditions' };
         }
 
-        return modal;
-    }
+        pass = pass && simple.Actions.hasOwnProperty('Labels');
 
-    // Public interface to the toTree() function
-    function ToTree(modal)
-    {
-        tree = null;
+        for (index in simple.Actions.Labels) {
+            var label = simple.Actions.Labels[index];
 
-        try {
-            tree = toTree(modal);
-        } catch (e) {
-            tree = [];
+            pass = pass && label.hasOwnProperty('Name');
         }
 
-        return tree;
+        pass = pass && simple.Actions.hasOwnProperty('Move');
+
+        pass = pass && simple.Actions.hasOwnProperty('Mark');
+        pass = pass && simple.Actions.Mark.hasOwnProperty('Read');
+        pass = pass && simple.Actions.Mark.hasOwnProperty('Starred');
+
+
+        if (!pass) {
+            throw { name: 'InvalidInput', message: 'Invalid simple actions' };
+        }
+
+        return simple;
     }
 
-    function toTree(modal)
+    // Convert to Tree repreentation
+    function toTree(simple)
     {
-        modal = validateModal(modal);
+        simple = validateSimpleRepresentation(simple);
 
-        var type = OPERATOR_KEYS[modal.Operator];
+        var type = OPERATOR_KEYS[simple.Operator.value];
         var tests = [];
         var thens = [];
 
-        for (var index in modal.Conditions) {
-            condition = modal.Conditions[index];
-            var test;
+        for (var index in simple.Conditions)
+        {
+            condition = simple.Conditions[index];
+            var test = null;
+            var negate = false;
 
-            if (condition.Type === "attachments") {
-                test = buildAttachmentTest();
-            }
-            else
+            for (var v in condition.Values)
             {
-                var header;
-
-                for (var v in condition.Values) {
-                    var value = condition.Values[v];
-                    // Escape on Simple rep. "matches", "begins" and "ends" which maps to Tree "Matches"
-                    switch (condition.Comparator) {
-                        case "starts":
-                            condition.Comparator = "matches";
-                            value = escapeCharacters(value);
-                            condition.Values[v] = "".concat(value, "*");
-                            break;
-                        case "ends":
-                            condition.Comparator = "matches";
-                            value = escapeCharacters(value);
-                            condition.Values[v] = "".concat("*", value);
-                            break;
-                    }
-                }
-
-                var match = MATCH_KEYS[condition.Comparator];
-                var values = unique(condition.Values);
-
-                switch(condition.Type) {
-                    case "sender":
-                        header = ["From"];
-                        test = buildAddressTest(header, values, match);
+                var value = condition.Values[v];
+                // Escape on Simple rep. "matches", "begins" and "ends" which maps to Tree "Matches"
+                switch (condition.Comparator.value)
+                {
+                    case "starts":
+                        condition.Comparator.value = "matches";
+                        value = escapeCharacters(value);
+                        condition.Values[v] = "".concat(value, "*");
                         break;
 
-                    case "recipient":
-                        header = ["To", "Cc", "Bcc"];
-                        test = buildAddressTest(header, values, match);
+                    case "ends":
+                        condition.Comparator.value = "matches";
+                        value = escapeCharacters(value);
+                        condition.Values[v] = "".concat("*", value);
                         break;
 
-                    case "subject":
-                        header = ["Subject"];
-                        test = buildHeaderTest(header, values, match);
-                        break;
+                    case "!contains":
+                    case "!is":
+                    case "!matches":
+                    case "!starts":
+                    case "!ends":
+                        negate = true;
                 }
             }
 
-            if (condition.Not) test = buildTestNegate(test);
+            var match = MATCH_KEYS[condition.Comparator.value];
+            var values = unique(condition.Values);
+
+            switch(condition.Type.value)
+            {
+                case "sender":
+                    header = ["From"];
+                    test = buildAddressTest(header, values, match);
+                    break;
+
+                case "recipient":
+                    header = ["To", "Cc", "Bcc"];
+                    test = buildAddressTest(header, values, match);
+                    break;
+
+                case "subject":
+                    header = ["Subject"];
+                    test = buildHeaderTest(header, values, match);
+                    break;
+
+                case "attachments":
+                    header = null;
+                    test = buildAttachmentTest();
+                    break;
+            }
+
+            if (negate) test = buildTestNegate(test);
             tests.push(test);
         }
 
-        for (index in modal.Actions) {
-            action = modal.Actions[index];
-
-            var then;
-            switch (action.Type) {
-                case "labels":
-                    for (index in action.Labels) {
-                        label = action.Labels[index];
-                        then = buildFileintoThen(label);
-                        thens.push(then);
-                    }
-                    break;
-
-                case "move":
-                    var destination = invert(MAILBOX_IDENTIFIERS)[action.Folder];
-                    then = buildFileintoThen(destination);
-                    thens.push(then);
-                    break;
-
-                case "mark":
-                    then = buildSetflagThen(action.Read, action.Starred);
-                    thens.unshift(then); // SetFlags need to always be first
-                    break;
-            }
+        // Labels:
+        for (index in simple.Actions.Labels) {
+            label = simple.Actions.Labels[index];
+            then = buildFileintoThen(label.Name);
+            thens.push(then);
         }
+
+        // Move:
+        var destination = invert(MAILBOX_IDENTIFIERS)[simple.Actions.Move];
+        then = buildFileintoThen(destination);
+        thens.push(then);
+
+        // Mark:
+        then = buildSetflagThen(simple.Actions.Mark.Read, simple.Actions.Mark.Starred);
+        thens.unshift(then); // SetFlags need to always be first
 
         return buildBasicTree(type, tests, thens);
     }
 
-    // Public interface to the fromTree() function
-    function FromTree(tree)
-    {
-        modal = null;
-
-        try {
-            modal = fromTree(tree);
-        } catch (e) {
-            modal = {};
-        }
-
-        return modal;
-    }
-
     function fromTree(tree)
     {
-        var modal = {
-            "Operator": "all",
+        var simple = {
+            "Operator": {},
             "Conditions": [],
-            "Actions": []
+            "Actions": {}
         };
 
         tree = validateTree(tree);
 
+        simple.Operator.value = invert(OPERATOR_KEYS)[tree.If.Type];
+        simple.Operator.label = LABEL_KEYS[simple.Operator.value];
+
         conditions = iterateCondition(tree.If.Tests);
-        modal.Conditions = modal.Conditions.concat(conditions);
+        simple.Conditions = simple.Conditions.concat(conditions);
 
         actions = iterateAction(tree.Then);
-        modal.Actions = modal.Actions.concat(actions);
+        simple.Actions = actions;
 
-        return modal;
+        return simple;
     }
 
     function validateTree(tree) {
@@ -278,7 +277,8 @@
             var type = null;
             var params = null;
 
-            switch (element.Type) {
+            switch (element.Type)
+            {
                 case "Exists":
                     if (element.Headers.indexOf("X-Attached") >= 0) {
                         type = "attachments";
@@ -308,14 +308,17 @@
             }
 
             if (type !== "attachments") {
-                var comparator = invert(MATCH_KEYS)[element.Match.Type];
+                comparator = buildSimpleComparator(element.Match.Type);
                 params = {
                     "Comparator": comparator,
                     "Values": element.Keys
                 };
             }
+            params = {
+                "Values": element.Keys
+            };
 
-            condition = buildSimpleCondition(type, negate, params);
+            condition = buildSimpleCondition(type, comparator, params);
             conditions.push(condition);
         }
 
@@ -324,7 +327,7 @@
 
     function iterateAction(array)
     {
-        var actions = [];
+        var actions = buildSimpleActions();
         var labels = [];
         var labelindex = null;
 
@@ -335,7 +338,8 @@
             var type = null;
             var params = null;
 
-            switch (element.Type) {
+            switch (element.Type)
+            {
                 case "Reject":
                     throw { name: 'UnsupportedRepresentation', message: 'Unsupported filter representation' };
 
@@ -343,17 +347,11 @@
                     throw { name: 'UnsupportedRepresentation', message: 'Unsupported filter representation' };
 
                 case "Keep":
-                    type = "move";
-                    params = {
-                        "Folder": MAILBOX_IDENTIFIERS.inbox
-                    };
+                    actions.Move = MAILBOX_IDENTIFIERS.inbox;
                     break;
 
                 case "Discard":
-                    type = "move";
-                    params = {
-                        "Folder": MAILBOX_IDENTIFIERS.trash
-                    };
+                    actions.Move = MAILBOX_IDENTIFIERS.trash;
                     break;
 
                 case "FileInto":
@@ -367,15 +365,14 @@
                         case "archive":
                         case "spam":
                         case "trash":
-                            type = "move";
-                            name = MAILBOX_IDENTIFIERS[name];
-                            params = {
-                                "Folder": name
-                            };
+                            actions.Move = MAILBOX_IDENTIFIERS[name];
                             break;
 
                         default:
-                            labels.push(name);
+                            label = {
+                                "Name": name
+                            }
+                            labels.push(label);
                             if (labelindex === null) labelindex = index; // preserve the index of the first label action
                             skip = true;
                             break;
@@ -389,7 +386,7 @@
                     var read = (element.Flags.indexOf("\\Seen") >= 0);
                     var starred = (element.Flags.indexOf("\\Flagged") >= 0);
 
-                    params = {
+                    actions.Mark = {
                         "Read": read,
                         "Starred": starred
                     };
@@ -400,19 +397,43 @@
             }
 
             if (skip) continue;
-
-            action = buildSimpleAction(type, params);
-            actions.push(action);
         }
 
         // Append labels action
-        // FIXME This implies that order of actions is not preserved
-        action = buildSimpleAction("labels", {
-            "Labels": labels
-        });
-        actions.splice(labelindex, 0, action);
+        actions.Labels = labels;
 
         return actions;
+    }
+
+    // Public interface
+    // ================
+
+    // Public interface to the toTree() function
+    function ToTree(modal)
+    {
+        tree = null;
+
+        try {
+            tree = toTree(modal);
+        } catch (e) {
+            tree = [];
+        }
+
+        return tree;
+    }
+
+    // Public interface to the fromTree() function
+    function FromTree(tree)
+    {
+        modal = null;
+
+        try {
+            modal = fromTree(tree);
+        } catch (e) {
+            modal = {};
+        }
+
+        return modal;
     }
 
     // Generic helper functions
@@ -438,8 +459,8 @@
         });
     }
 
-    // Tree helpers
-    // ============
+    // Tree representation helpers
+    // ===========================
     // @internal Helper functions for building backend filter representation trees from the frontend modal
 
     function buildBasicTree(type, tests, actions) {
@@ -538,25 +559,42 @@
         };
     }
 
-    // Modal helpers
-    // =============
+    // Simple representation helpers
+    // =============================
     // @internal Helper functions for building frontend filter modal from the backend representation
 
-    function buildSimpleCondition(type, negate, params)
+    function buildSimpleComparator(comparator, negate) {
+        comparator = invert(MATCH_KEYS)[comparator];
+        if (negate) comparator = "!" + comparator;
+        return comparator;
+    }
+
+    function buildLabelValueObject(value) {
+        return {
+            "label": LABEL_KEYS[value],
+            "value": value
+        };
+    }
+
+    function buildSimpleCondition(type, comparator, params)
     {
         var condition = {
-            "Type": type,
-            "Not": negate
+            "Type": buildLabelValueObject(type),
+            "Comparator": buildLabelValueObject(comparator)
         };
         return angular.merge(condition, params);
     }
 
-    function buildSimpleAction(type, params)
+    function buildSimpleActions()
     {
-        var action = {
-            "Type": type
+        return {
+            "Labels": [],
+            "Move": null,
+            "Mark": {
+                "Read": false,
+                "Starred": false
+            }
         };
-        return angular.merge(action, params);
     }
 
     var expose = {
@@ -568,187 +606,11 @@
     // =================
     if (DEBUG)
     {
-        var tree = [
-            {
-                "List": ["fileinto", "imap4flags"],
-                "Type": "Require"
-            },
-            {
-                "If":
-                {
-                    "Tests":
-                    [
-                        {
-                            "Headers": ["From"],
-                            "Keys": ["sender@example.com"],
-                            "Match":
-                            {
-                                "Type": "Is"
-                            },
-                            "Format":
-                            {
-                                "Type": "UnicodeCaseMap"
-                            },
-                            "Type": "Address",
-                            "AddressPart":
-                            {
-                                "Type": "All"
-                            }
-                        },
-                        {
-                            "Headers": ["To", "Cc", "Bcc"],
-                            "Keys": ["target@example.com"],
-                            "Match":
-                            {
-                                "Type": "Contains"
-                            },
-                            "Format":
-                            {
-                                "Type": "UnicodeCaseMap"
-                            },
-                            "Type": "Address",
-                            "AddressPart":
-                            {
-                                "Type": "All"
-                            }
-                        },
-                        {
-                            "Headers": ["Subject"],
-                            "Keys": ["T*st"],
-                            "Match":
-                            {
-                                "Type": "Matches"
-                            },
-                            "Format":
-                            {
-                                "Type": "UnicodeCaseMap"
-                            },
-                            "Type": "Header"
-                        },
-                        {
-                            "Headers": ["Subject"],
-                            "Keys": ["T\\*st*"],
-                            "Match":
-                            {
-                                "Type": "Matches"
-                            },
-                            "Format":
-                            {
-                                "Type": "UnicodeCaseMap"
-                            },
-                            "Type": "Header"
-                        },
-                        {
-                            "Headers": ["Subject"],
-                            "Keys": ["*you\\?"],
-                            "Match":
-                            {
-                                "Type": "Matches"
-                            },
-                            "Format":
-                            {
-                                "Type": "UnicodeCaseMap"
-                            },
-                            "Type": "Header"
-                        },
-                        {
-                            "Headers": ["X-Attached"],
-                            "Type": "Exists"
-                        }
-                    ],
-                    "Type": "AnyOf"
-                },
-                "Then":
-                [
-                    {
-                        "Name": "work",
-                        "Type": "FileInto"
-                    },
-                    {
-                        "Name": "todo",
-                        "Type": "FileInto"
-                    },
-                    {
-                        "Name": "archive",
-                        "Type": "FileInto"
-                    },
-                    {
-                        "Flags": ["\\Seen", "\\Flagged"],
-                        "Type": "SetFlag"
-                    }
-                ],
-                "Type": "If"
-            }
-        ];
-
-        var simple = {
-            "Operator": "and",
-            "Conditions":
-            [
-                {
-                   "Type": "subject",
-                   "Comparator": "is",
-                   "Values":["T*st"],
-                   "Not": false
-                },
-                {
-                   "Type": "sender",
-                   "Comparator": "contains",
-                   "Values":["sender@example.com"],
-                   "Not": false
-                },
-                {
-                   "Type": "recipient",
-                   "Comparator": "matches",
-                   "Values": ["target@example.com"],
-                   "Not": false
-                },
-                {
-                   "Type": "subject",
-                   "Comparator": "starts",
-                   "Values": ["T*st"],
-                   "Not": false
-                },
-                {
-                   "Type": "subject",
-                   "Comparator": "ends",
-                   "Values": ["you?"],
-                   "Not": false
-                },
-                {
-                   "Type": "attachments",
-                   "Not": true
-                }
-            ],
-            "Actions":
-            [
-                {
-                    "Type": "mark",
-                    "Read": true,
-                    "Starred": true
-                },
-                {
-                    "Type": "labels",
-                    "Labels":
-                    [
-                        "work",
-                        "todo"
-                    ]
-                },
-                {
-                    "Type": "move",
-                    "Folder": "6"
-                }
-            ]
-        };
-
         expose = {
             fromTree: FromTree,
             toTree: ToTree,
-            tree: tree,
-            simple: simple,
-            testTo: toTree,
-            testFrom: fromTree
+            testToTree: toTree,
+            testFromTree: fromTree
         };
     }
 
