@@ -220,9 +220,11 @@
         then = buildFileintoThen(destination);
         thens.push(then);
 
-        // Mark:
-        then = buildSetflagThen(simple.Actions.Mark.Read, simple.Actions.Mark.Starred);
-        thens.unshift(then); // SetFlags need to always be first
+        // Mark: (needs to only be included if flags are not false)
+        if (simple.Actions.Mark.Read !== false || simple.Actions.Mark.Starred !== false) {
+            then = buildSetflagThen(simple.Actions.Mark.Read, simple.Actions.Mark.Starred);
+            thens.unshift(then); // SetFlags need to always be first
+        }
 
         return buildBasicTree(type, tests, thens);
     }
