@@ -5,7 +5,7 @@
 
  var Sieve = (function() {
 
-    var DEBUG = true;
+    var DEBUG = false;
 
     var MAILBOX_IDENTIFIERS = {
         "inbox"  : '0',
@@ -432,7 +432,8 @@
 
         try {
             tree = toTree(modal);
-        } catch (e) {
+        } catch (exception) {
+            if (DEBUG) console.log(exception.message);
             tree = [];
         }
 
@@ -446,7 +447,8 @@
 
         try {
             modal = fromTree(tree);
-        } catch (e) {
+        } catch (exception) {
+            if (DEBUG) console.log(exception.message);
             modal = {};
         }
 
@@ -624,18 +626,6 @@
         fromTree: FromTree,
         toTree: ToTree
     };
-
-    // Debugging helpers
-    // =================
-    if (DEBUG)
-    {
-        expose = {
-            fromTree: FromTree,
-            toTree: ToTree,
-            testToTree: toTree,
-            testFromTree: fromTree
-        };
-    }
 
     return expose;
 }());

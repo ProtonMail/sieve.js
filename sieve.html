@@ -16,7 +16,7 @@
         <pre id="json2"></pre>
         <p id="test2"></p>
         <script type="text/javascript">
-            var tree = Sieve.testToTree(Test.simple);
+            var tree = Sieve.toTree(Test.simple);
             document.getElementById("json1").innerHTML = JSON.stringify(tree, null, 4);
 
             if (JSON.stringify(tree) === JSON.stringify(Test.tree)) {
@@ -25,7 +25,7 @@
                 document.getElementById("test1").innerHTML = "FAIL";
             }
 
-            var simple = Sieve.testFromTree(Test.tree);
+            var simple = Sieve.fromTree(Test.tree);
             document.getElementById("json2").innerHTML = JSON.stringify(simple, null, 4);
 
             // if (JSON.stringify(simple) === JSON.stringify(Test.simple)) {
