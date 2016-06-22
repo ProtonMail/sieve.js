@@ -172,6 +172,39 @@ var Test = (function() {
         }
     ];
 
+    tree = [
+        {
+            "List": ["fileinto", "imap4flags"],
+            "Type": "Require"
+        },
+        {
+            "If":
+            {
+                "Tests": [
+                {
+                    "Headers": ["Subject"],
+                    "Keys": ["bart"],
+                    "Match":
+                    {
+                        "Type": "Contains"
+                    },
+                    "Format":
+                    {
+                        "Type": "UnicodeCaseMap"
+                    },
+                    "Type": "Header"
+                }],
+                "Type": "AllOf"
+            },
+            "Then": [
+            {
+                "Name": "archive",
+                "Type": "FileInto"
+            }],
+            "Type": "If"
+        }
+    ];
+
     var simple = {
         "Operator":
         {
@@ -333,6 +366,40 @@ var Test = (function() {
             }
         }
     };
+
+    simple = {
+        "Operator":
+        {
+            "label": "all",
+            "value": "all"
+        },
+        "Conditions": [
+        {
+            "Type":
+            {
+                "label": "Subject",
+                "value": "subject"
+            },
+            "Comparator":
+            {
+                "label": "contains",
+                "value": "contains"
+            },
+            "Values": ["eeeee"],
+            "value": ""
+        }],
+        "Actions":
+        {
+            "Labels": [],
+            "Move": null,
+            "Mark":
+            {
+                "Read": false,
+                "Starred": false
+            }
+        }
+    };
+
 
     var old = {
         "Operator": "and",

@@ -216,9 +216,13 @@
         }
 
         // Move:
-        var destination = invert(MAILBOX_IDENTIFIERS)[simple.Actions.Move];
-        then = buildFileintoThen(destination);
-        thens.push(then);
+        if (simple.Actions.Move !== null) {
+            var destination = invert(MAILBOX_IDENTIFIERS)[simple.Actions.Move];
+            if (destination !== null) {
+                then = buildFileintoThen(destination);
+                thens.push(then);
+            }
+        }
 
         // Mark: (needs to only be included if flags are not false)
         if (simple.Actions.Mark.Read !== false || simple.Actions.Mark.Starred !== false) {
