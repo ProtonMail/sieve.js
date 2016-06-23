@@ -227,7 +227,10 @@
         // Mark: (needs to only be included if flags are not false)
         if (simple.Actions.Mark.Read !== false || simple.Actions.Mark.Starred !== false) {
             then = buildSetflagThen(simple.Actions.Mark.Read, simple.Actions.Mark.Starred);
-            thens.unshift(then); // SetFlags need to always be first
+            thens.push(then);
+            thens.push({
+                "Type": "Keep"
+            });
         }
 
         return buildBasicTree(type, tests, thens);
@@ -370,7 +373,6 @@
                     throw { name: 'UnsupportedRepresentation', message: 'Unsupported filter representation' };
 
                 case "Keep":
-                    actions.Move = MAILBOX_IDENTIFIERS.inbox;
                     break;
 
                 case "Discard":
@@ -394,7 +396,7 @@
                         default:
                             label = {
                                 "Name": name
-                            }
+                            };
                             labels.push(label);
                             if (labelindex === null) labelindex = index; // preserve the index of the first label action
                             skip = true;
@@ -573,7 +575,7 @@
         }
         return {
             "Flags": flags,
-            "Type": "SetFlag"
+            "Type": "AddFlag"
         };
     }
 
