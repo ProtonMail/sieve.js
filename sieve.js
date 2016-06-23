@@ -405,7 +405,7 @@
 
                     break;
 
-                case "SetFlag":
+                case "AddFlag":
                     type = "mark";
 
                     var read = (element.Flags.indexOf("\\Seen") >= 0);
