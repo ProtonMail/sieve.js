@@ -5,7 +5,7 @@
 
  var Sieve = (function() {
 
-    var DEBUG = true;
+    var DEBUG = false;
 
     var MATCH_KEYS = {
         "is"      : "Is",
@@ -416,7 +416,9 @@
         try {
             tree = toTree(modal);
         } catch (exception) {
-            if (DEBUG) console.log(exception.message);
+            if (DEBUG) {
+                console.error(exception);
+            }
             tree = [];
         }
 
@@ -431,7 +433,9 @@
         try {
             modal = fromTree(tree);
         } catch (exception) {
-            if (DEBUG) console.log(exception.message);
+            if (DEBUG) {
+                console.error(exception);
+            }
             modal = {};
         }
 
