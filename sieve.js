@@ -5,19 +5,7 @@
 
  var Sieve = (function() {
 
-    var DEBUG = false;
-
-    var MAILBOX_IDENTIFIERS = {
-        "inbox"  : '0',
-        "drafts" : '1',
-        "sent"   : '2',
-        "trash"  : '3',
-        "spam"   : '4',
-        "archive": '6',
-        "search" : '7',
-        "label"  : '8',
-        "starred": '10'
-    };
+    var DEBUG = true;
 
     var MATCH_KEYS = {
         "is"      : "Is",
@@ -108,15 +96,8 @@
             throw { name: 'InvalidInput', message: 'Invalid simple conditions' };
         }
 
-        pass = pass && simple.Actions.hasOwnProperty('Labels');
-
-        for (index in simple.Actions.Labels) {
-            var label = simple.Actions.Labels[index];
-
-            pass = pass && label.hasOwnProperty('Name');
-        }
-
-        pass = pass && simple.Actions.hasOwnProperty('Move');
+        pass = pass && simple.Actions.hasOwnProperty('FileInto');
+        pass = pass && simple.Actions.FileInto instanceof Array;
 
         pass = pass && simple.Actions.hasOwnProperty('Mark');
         pass = pass && simple.Actions.Mark.hasOwnProperty('Read');
@@ -218,16 +199,10 @@
             tests.push(test);
         }
 
-        // Labels:
-        for (index in simple.Actions.Labels) {
-            label = simple.Actions.Labels[index];
-            then = buildFileintoThen(label.Name);
-            thens.push(then);
-        }
-
-        // Move:
-        if (simple.Actions.Move !== null) {
-            var destination = invert(MAILBOX_IDENTIFIERS)[simple.Actions.Move];
+        // FileInto:
+        for (var index in simple.Actions.FileInto)
+        {
+            var destination = simple.Actions.FileInto[index];
             if (destination !== null) {
                 then = buildFileintoThen(destination);
                 thens.push(then);
@@ -379,7 +354,6 @@
     function iterateAction(array)
     {
         var actions = buildSimpleActions();
-        var labels = [];
         var labelindex = null;
 
         for (var index in array) {
@@ -401,33 +375,12 @@
                     break;
 
                 case "Discard":
-                    actions.Move = MAILBOX_IDENTIFIERS.trash;
+                    actions.FileInto.push("trash");
                     break;
 
                 case "FileInto":
                     var name = element.Name;
-
-                    switch (name) {
-                        case "inbox":
-                        case "drafts":
-                        case "sent":
-                        case "starred":
-                        case "archive":
-                        case "spam":
-                        case "trash":
-                            actions.Move = MAILBOX_IDENTIFIERS[name];
-                            break;
-
-                        default:
-                            label = {
-                                "Name": name
-                            };
-                            labels.push(label);
-                            if (labelindex === null) labelindex = index; // preserve the index of the first label action
-                            skip = true;
-                            break;
-                    }
-
+                    actions.FileInto.push(name);
                     break;
 
                 case "AddFlag":
@@ -448,9 +401,6 @@
 
             if (skip) continue;
         }
-
-        // Append labels action
-        actions.Labels = labels;
 
         return actions;
     }
@@ -604,9 +554,9 @@
         };
     }
 
-    function buildFileintoThen(label) {
+    function buildFileintoThen(name) {
         return {
-            "Name": label,
+            "Name": name,
             "Type": "FileInto"
         };
     }
@@ -646,8 +596,7 @@
     function buildSimpleActions()
     {
         return {
-            "Labels": [],
-            "Move": null,
+            "FileInto": [],
             "Mark": {
                 "Read": false,
                 "Starred": false

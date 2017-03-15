@@ -5,8 +5,10 @@
     <head>
         <title>sieve.js</title>
         <script type="text/javascript" src="bower_components/angular/angular.min.js"></script>
+        <script type="text/javascript" src="bower_components/underscore/underscore-min.js"></script>
+        <script type="text/javascript" src="bower_components/deep-diff/releases/deep-diff-0.3.3.min.js"></script>
         <script type="text/javascript" src="sieve.js"></script>
-        <script type="text/javascript" src="test.js"></script>
+        <script type="text/javascript" src="tests/archive.js"></script>
     </head>
 
     <body>
@@ -18,21 +20,13 @@
         <script type="text/javascript">
             var tree = Sieve.toTree(Test.simple);
             document.getElementById("json1").innerHTML = JSON.stringify(tree, null, 4);
-
-            if (JSON.stringify(tree) === JSON.stringify(Test.tree)) {
-                document.getElementById("test1").innerHTML = "OK";
-            } else {
-                document.getElementById("test1").innerHTML = "FAIL";
-            }
+            var differences = DeepDiff.diff(tree, Test.tree);
+            document.getElementById("test1").innerHTML = JSON.stringify(differences, null, 4);
 
             var simple = Sieve.fromTree(Test.tree);
             document.getElementById("json2").innerHTML = JSON.stringify(simple, null, 4);
-
-            // if (JSON.stringify(simple) === JSON.stringify(Test.simple)) {
-            //     document.getElementById("test2").innerHTML = "OK";
-            // } else {
-            //     document.getElementById("test2").innerHTML = "FAIL";
-            // }
+            var differences = DeepDiff.diff(simple, Test.simple);
+            document.getElementById("test2").innerHTML = JSON.stringify(differences, null, 4);
         </script>
     </body>
 
