@@ -115,6 +115,7 @@
     function toTree(simple)
     {
         simple = validateSimpleRepresentation(simple);
+        simple = JSON.parse(JSON.stringify(simple));
 
         var type = OPERATOR_KEYS[simple.Operator.value];
         var tests = [];
@@ -223,13 +224,15 @@
 
     function fromTree(tree)
     {
+        tree = validateTree(tree);
+        tree = JSON.parse(JSON.stringify(tree));
+
         var simple = {
             "Operator": {},
             "Conditions": [],
             "Actions": {}
         };
 
-        tree = validateTree(tree);
 
         operator = invert(OPERATOR_KEYS)[tree.If.Type];
         simple.Operator.label = LABEL_KEYS[operator];
