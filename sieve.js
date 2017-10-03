@@ -157,18 +157,18 @@
                 switch (comparator)
                 {
                     case "starts":
-                        comparator = "matches";
                         value = escapeCharacters(value);
                         condition.Values[v] = "".concat(value, "*");
                         break;
 
                     case "ends":
-                        comparator = "matches";
                         value = escapeCharacters(value);
                         condition.Values[v] = "".concat("*", value);
                         break;
                 }
             }
+
+            comparator = comparator === "starts" || comparator === "ends" ? "matches" : comparator;
 
             var match = MATCH_KEYS[comparator];
             var values = unique(condition.Values);
