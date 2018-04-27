@@ -119,6 +119,8 @@
         var type = OPERATOR_KEYS[simple.Operator.value];
         var tests = [];
         var thens = [];
+        var require = [];
+        var vacation = {};
 
         for (var index in simple.Conditions)
         {
@@ -218,7 +220,12 @@
             });
         }
 
-        return buildBasicTree(type, tests, thens);
+        if (simple.Actions.Vacation) {
+            require.push('vacation');
+            vacation = buildVacation(simple.Actions.Vacation);
+        }
+
+        return buildBasicTree({ type, tests, thens, require, vacation });
     }
 
     function fromTree(tree) {
@@ -463,20 +470,25 @@
     // ===========================
     // @internal Helper functions for building backend filter representation trees from the frontend modal
 
-    function buildBasicTree(type, tests, actions) {
-        require = buildSieveRequire();
-        return [
-            require,
+    function buildBasicTree(parameters) {
+        var treeStructure = [
+            require: buildSieveRequire(parameters.requires),
             {
                 If:
                 {
-                    Tests: tests,
-                    Type: type
+                    Tests: parameters.tests,
+                    Type: parameters.type
                 },
-                Then: actions,
+                Then: parameters.actions,
                 Type: 'If'
             }
         ];
+
+        if (parameters.vacation) {
+            treeStructure.push(parameters.vacation);
+        }
+
+        return treeStructure;
     }
 
     function buildTestNegate(test) {
@@ -486,10 +498,10 @@
         };
     }
 
-    function buildSieveRequire()
+    function buildSieveRequire(requires)
     {
         return {
-            List: ['fileinto', 'imap4flags'],
+            List: ['fileinto', 'imap4flags'].concat(requires),
             Type: 'Require'
         };
     }
@@ -544,6 +556,22 @@
         return {
             Flags: flags,
             Type: 'AddFlag'
+        };
+    }
+
+    function buildVacation(message) {
+        return {
+            Message: message,
+            Args: {
+                subject: DEFAULT_VACATION_SUBJECT
+            },
+            Parameters: [
+                {
+                    Argument: DEFAULT_VACATION_SUBJECT,
+                    Type: 'Vacation\\Subject'
+                }
+            ],
+            Type: 'Vacation\\Vacation'
         };
     }
 
