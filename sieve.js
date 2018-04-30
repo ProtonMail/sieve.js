@@ -562,14 +562,8 @@
     function buildVacation(message) {
         return {
             Message: message,
-            Args: {
-                subject: DEFAULT_VACATION_SUBJECT
-            },
             Parameters: [
-                {
-                    Argument: DEFAULT_VACATION_SUBJECT,
-                    Type: 'Vacation\\Subject'
-                }
+                { Type: 'Vacation\\Mime' }
             ],
             Type: 'Vacation\\Vacation'
         };
