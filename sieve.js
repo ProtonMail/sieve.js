@@ -365,8 +365,6 @@
         for (var index in array) {
             var skip = false;
             var element = array[index];
-
-            var type = null;
             var params = null;
 
             switch (element.Type) {
@@ -389,8 +387,6 @@
                     break;
 
                 case 'AddFlag':
-                    type = 'mark';
-
                     var read = (element.Flags.indexOf('\\Seen') >= 0);
                     var starred = (element.Flags.indexOf('\\Flagged') >= 0);
 
@@ -398,6 +394,10 @@
                         Read: read,
                         Starred: starred
                     };
+                    break;
+
+                case 'Vacation':
+                    actions.Vacation = element.Message;
                     break;
 
                 default:
@@ -562,9 +562,7 @@
     function buildVacation(message) {
         return {
             Message: message,
-            Parameters: [
-                { Type: 'Vacation\\Mime' }
-            ],
+            Args: { Mime: 'text/html' },
             Type: 'Vacation\\Vacation'
         };
     }
