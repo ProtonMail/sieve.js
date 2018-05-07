@@ -1,10 +1,10 @@
-# sieve.js
+# Sieve.js
 
 Javascript library to wrap sieve configuration
 
 ### Simple repreentation
 
-``` javascript
+```js
 {
     Operator: {
         label: '',
@@ -28,3 +28,7 @@ Javascript library to wrap sieve configuration
     }
 }
 ```
+
+## Test
+
+`npm run test`
