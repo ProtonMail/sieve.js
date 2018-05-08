@@ -562,7 +562,7 @@
     function buildVacation(message) {
         return {
             Message: message,
-            Args: { Mime: 'text/html' },
+            Args: { MIMEType: 'text/html' },
             Type: 'Vacation\\Vacation'
         };
     }
