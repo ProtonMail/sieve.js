@@ -225,7 +225,13 @@
             vacation = buildVacation(simple.Actions.Vacation);
         }
 
-        return buildBasicTree({ type, tests, thens, require, vacation });
+        return buildBasicTree({
+            type: type,
+            tests: tests,
+            thens: thens,
+            require: require,
+            vacation: vacation
+        });
     }
 
     function fromTree(tree) {
