@@ -8,37 +8,37 @@
     var DEBUG = false;
 
     var MATCH_KEYS = {
-        "is"      : "Is",
-        "contains": "Contains",
-        "matches" : "Matches"
+        is: 'Is',
+        contains: 'Contains',
+        matches: 'Matches'
     };
 
     var OPERATOR_KEYS = {
-        "all": "AllOf",
-        "any": "AnyOf"
+        all: 'AllOf',
+        any: 'AnyOf'
     };
 
     var LABEL_KEYS = {
-        "all": "All",
-        "any": "Any",
-        "subject": "Subject",
-        "sender": "Sender",
-        "recipient": "Recipient",
-        "attachments": "Attachments",
-        "contains": "contains",
-        "!contains": "does not contain",
-        "is": "is exactly",
-        "!is": "is not",
-        "matches": "matches",
-        "!matches": "does not match",
-        "starts": "begins with",
-        "!starts": "does not begin with",
-        "ends": "ends with",
-        "!ends": "does not end with"
+        all: 'All',
+        any: 'Any',
+        subject: 'Subject',
+        sender: 'Sender',
+        recipient: 'Recipient',
+        attachments: 'Attachments',
+        contains: 'contains',
+        '!contains': 'does not contain',
+        is: 'is exactly',
+        '!is': 'is not',
+        matches: 'matches',
+        '!matches': 'does not match',
+        starts: 'begins with',
+        '!starts': 'does not begin with',
+        ends: 'ends with',
+        '!ends': 'does not end with'
     };
 
     function escapeCharacters(text) {
-        return text.replace(/([*?])/g, "\\\\$1");
+        return text.replace(/([*?])/g, '\\\\$1');
     }
 
     /**
@@ -51,8 +51,7 @@
         return merged;
     }
 
-    function validateSimpleRepresentation(simple)
-    {
+    function validateSimpleRepresentation(simple) {
         var pass = true;
 
         pass = pass && simple.hasOwnProperty('Operator');
@@ -103,6 +102,7 @@
         pass = pass && simple.Actions.Mark.hasOwnProperty('Read');
         pass = pass && simple.Actions.Mark.hasOwnProperty('Starred');
 
+        pass = pass && simple.Actions.hasOwnProperty('Vacation');
 
         if (!pass) {
             throw { name: 'InvalidInput', message: 'Invalid simple actions' };
@@ -112,14 +112,15 @@
     }
 
     // Convert to Tree repreentation
-    function toTree(simple)
-    {
+    function toTree(simple) {
         simple = validateSimpleRepresentation(simple);
         simple = JSON.parse(JSON.stringify(simple));
 
         var type = OPERATOR_KEYS[simple.Operator.value];
         var tests = [];
         var thens = [];
+        var require = [];
+        var vacation = {};
 
         for (var index in simple.Conditions)
         {
@@ -130,18 +131,18 @@
 
             switch (comparator)
             {
-                case "contains":
-                case "is":
-                case "matches":
-                case "starts":
-                case "ends":
+                case 'contains':
+                case 'is':
+                case 'matches':
+                case 'starts':
+                case 'ends':
                     break;
 
-                case "!contains":
-                case "!is":
-                case "!matches":
-                case "!starts":
-                case "!ends":
+                case '!contains':
+                case '!is':
+                case '!matches':
+                case '!starts':
+                case '!ends':
                     comparator = comparator.substring(1);
                     negate = true;
                     break;
@@ -153,44 +154,44 @@
             for (var v in condition.Values)
             {
                 var value = condition.Values[v];
-                // Escape on Simple rep. "matches", "begins" and "ends" which maps to Tree "Matches"
+                // Escape on Simple rep. 'matches', 'begins' and 'ends' which maps to Tree 'Matches'
                 switch (comparator)
                 {
-                    case "starts":
+                    case 'starts':
                         value = escapeCharacters(value);
-                        condition.Values[v] = "".concat(value, "*");
+                        condition.Values[v] = ''.concat(value, '*');
                         break;
 
-                    case "ends":
+                    case 'ends':
                         value = escapeCharacters(value);
-                        condition.Values[v] = "".concat("*", value);
+                        condition.Values[v] = ''.concat('*', value);
                         break;
                 }
             }
 
-            comparator = comparator === "starts" || comparator === "ends" ? "matches" : comparator;
+            comparator = comparator === 'starts' || comparator === 'ends' ? 'matches' : comparator;
 
             var match = MATCH_KEYS[comparator];
             var values = unique(condition.Values);
 
             switch(condition.Type.value)
             {
-                case "sender":
-                    header = ["From"];
+                case 'sender':
+                    header = ['From'];
                     test = buildAddressTest(header, values, match);
                     break;
 
-                case "recipient":
-                    header = ["To", "Cc", "Bcc"];
+                case 'recipient':
+                    header = ['To', 'Cc', 'Bcc'];
                     test = buildAddressTest(header, values, match);
                     break;
 
-                case "subject":
-                    header = ["Subject"];
+                case 'subject':
+                    header = ['Subject'];
                     test = buildHeaderTest(header, values, match);
                     break;
 
-                case "attachments":
+                case 'attachments':
                     header = null;
                     test = buildAttachmentTest();
                     break;
@@ -215,22 +216,32 @@
             then = buildSetflagThen(simple.Actions.Mark.Read, simple.Actions.Mark.Starred);
             thens.push(then);
             thens.push({
-                "Type": "Keep"
+                Type: 'Keep'
             });
         }
 
-        return buildBasicTree(type, tests, thens);
+        if (simple.Actions.Vacation) {
+            require.push('vacation');
+            vacation = buildVacation(simple.Actions.Vacation);
+        }
+
+        return buildBasicTree({
+            type: type,
+            tests: tests,
+            thens: thens,
+            require: require,
+            vacation: vacation
+        });
     }
 
-    function fromTree(tree)
-    {
+    function fromTree(tree) {
         tree = validateTree(tree);
         tree = JSON.parse(JSON.stringify(tree));
 
         var simple = {
-            "Operator": {},
-            "Conditions": [],
-            "Actions": {}
+            Operator: {},
+            Conditions: [],
+            Actions: {}
         };
 
 
@@ -248,13 +259,13 @@
     }
 
     function validateTree(tree) {
-        var string = "";
+        var string = '';
         var pass = false;
 
         if (tree instanceof Array) {
             var check = tree[0]; // First elements corresponds to the requirements
-            if (check.Type === "require") {
-                requirements = ["fileinto", "imap4flags"];
+            if (check.Type === 'require') {
+                requirements = ['fileinto', 'imap4flags'];
                 if (check.List.indexOf(requirements) < 0) {
                     throw { name: 'InvalidInput', message: 'Invalid tree representation: requirements' };
                 }
@@ -266,20 +277,20 @@
 
             if (pass) {
                 pass = pass && tree.hasOwnProperty('If');
-                string = "If";
+                string = 'If';
             }
             // FIXME Figure out whether this is necessary
             if (pass) {
                 pass = pass && tree.If.hasOwnProperty('Tests');
-                string = "Tests";
+                string = 'Tests';
             }
             if (pass) {
                 pass = pass && tree.hasOwnProperty('Then');
-                string = "Then";
+                string = 'Then';
             }
             if (pass) {
                 pass = pass && tree.hasOwnProperty('Type');
-                string = "Type";
+                string = 'Type';
             }
         }
 
@@ -290,15 +301,14 @@
         return tree;
     }
 
-    function iterateCondition(array)
-    {
+    function iterateCondition(array) {
         var conditions = [];
 
         for (var index in array) {
             var element = array[index];
 
             var negate = false;
-            if (element.Type === "Not") {
+            if (element.Type === 'Not') {
                 negate = true;
                 element = element.Test;
             }
@@ -308,43 +318,43 @@
 
             switch (element.Type)
             {
-                case "Exists":
-                    if (element.Headers.indexOf("X-Attached") >= 0) {
-                        type = "attachments";
+                case 'Exists':
+                    if (element.Headers.indexOf('X-Attached') >= 0) {
+                        type = 'attachments';
                     }
                     break;
 
-                case "Header":
-                    if (element.Headers.indexOf("Subject") >= 0) {
-                        type = "subject";
+                case 'Header':
+                    if (element.Headers.indexOf('Subject') >= 0) {
+                        type = 'subject';
                     }
                     break;
 
-                case "Address":
-                    if (element.Headers.indexOf("From") >= 0) {
-                        type = "sender";
+                case 'Address':
+                    if (element.Headers.indexOf('From') >= 0) {
+                        type = 'sender';
                     }
-                    else if (element.Headers.indexOf("To") >= 0) {
-                        type = "recipient";
+                    else if (element.Headers.indexOf('To') >= 0) {
+                        type = 'recipient';
                     }
-                    else if (element.Headers.indexOf("Cc")  >= 0) {
-                        type = "recipient";
+                    else if (element.Headers.indexOf('Cc')  >= 0) {
+                        type = 'recipient';
                     }
-                    else if (element.Headers.indexOf("Bcc") >= 0) {
-                        type = "recipient";
+                    else if (element.Headers.indexOf('Bcc') >= 0) {
+                        type = 'recipient';
                     }
                     break;
             }
 
-            if (type === "attachments") {
-                comparator = buildSimpleComparator("Contains", negate);
+            if (type === 'attachments') {
+                comparator = buildSimpleComparator('Contains', negate);
             } else {
                 comparator = buildSimpleComparator(element.Match.Type, negate);
             }
 
             params = {
-                "Comparator": comparator,
-                "Values": (element.Keys !== undefined) ? element.Keys : []
+                Comparator: comparator,
+                Values: (element.Keys !== undefined) ? element.Keys : []
             };
 
             condition = buildSimpleCondition(type, comparator, params);
@@ -354,48 +364,46 @@
         return conditions;
     }
 
-    function iterateAction(array)
-    {
+    function iterateAction(array) {
         var actions = buildSimpleActions();
         var labelindex = null;
 
         for (var index in array) {
             var skip = false;
             var element = array[index];
-
-            var type = null;
             var params = null;
 
-            switch (element.Type)
-            {
-                case "Reject":
+            switch (element.Type) {
+                case 'Reject':
                     throw { name: 'UnsupportedRepresentation', message: 'Unsupported filter representation: Reject' };
 
-                case "Redirect":
+                case 'Redirect':
                     throw { name: 'UnsupportedRepresentation', message: 'Unsupported filter representation: Redirect' };
 
-                case "Keep":
+                case 'Keep':
                     break;
 
-                case "Discard":
-                    actions.FileInto.push("trash");
+                case 'Discard':
+                    actions.FileInto.push('trash');
                     break;
 
-                case "FileInto":
+                case 'FileInto':
                     var name = element.Name;
                     actions.FileInto.push(name);
                     break;
 
-                case "AddFlag":
-                    type = "mark";
-
-                    var read = (element.Flags.indexOf("\\Seen") >= 0);
-                    var starred = (element.Flags.indexOf("\\Flagged") >= 0);
+                case 'AddFlag':
+                    var read = (element.Flags.indexOf('\\Seen') >= 0);
+                    var starred = (element.Flags.indexOf('\\Flagged') >= 0);
 
                     actions.Mark = {
-                        "Read": read,
-                        "Starred": starred
+                        Read: read,
+                        Starred: starred
                     };
+                    break;
+
+                case 'Vacation':
+                    actions.Vacation = element.Message;
                     break;
 
                 default:
@@ -412,8 +420,7 @@
     // ================
 
     // Public interface to the toTree() function
-    function ToTree(modal)
-    {
+    function ToTree(modal) {
         tree = null;
 
         try {
@@ -429,8 +436,7 @@
     }
 
     // Public interface to the fromTree() function
-    function FromTree(tree)
-    {
+    function FromTree(tree) {
         modal = null;
 
         try {
@@ -448,8 +454,7 @@
     // Generic helper functions
     // ========================
 
-    function invert(object)
-    {
+    function invert(object) {
         var inverted = {};
 
         for (var property in object) {
@@ -461,8 +466,7 @@
         return inverted;
     }
 
-    function unique(array)
-    {
+    function unique(array) {
         return array.filter(function(item, pos, self) {
             return self.indexOf(item) == pos;
         });
@@ -472,99 +476,107 @@
     // ===========================
     // @internal Helper functions for building backend filter representation trees from the frontend modal
 
-    function buildBasicTree(type, tests, actions) {
-        require = buildSieveRequire();
-        return [
-            require,
+    function buildBasicTree(parameters) {
+        var treeStructure = [
+            require: buildSieveRequire(parameters.requires),
             {
-                "If":
+                If:
                 {
-                    "Tests": tests,
-                    "Type": type
+                    Tests: parameters.tests,
+                    Type: parameters.type
                 },
-                "Then": actions,
-                "Type": "If"
+                Then: parameters.actions,
+                Type: 'If'
             }
         ];
+
+        if (parameters.vacation) {
+            treeStructure.push(parameters.vacation);
+        }
+
+        return treeStructure;
     }
 
     function buildTestNegate(test) {
         return {
-            "Test": test,
-            "Type": "Not"
+            Test: test,
+            Type: 'Not'
         };
     }
 
-    function buildSieveRequire()
+    function buildSieveRequire(requires)
     {
         return {
-            "List": ["fileinto", "imap4flags"],
-            "Type": "Require"
+            List: ['fileinto', 'imap4flags'].concat(requires),
+            Type: 'Require'
         };
     }
 
     function buildHeaderTest(headers, keys, match) {
         return {
-            "Headers": headers,
-            "Keys": keys,
-            "Match":
-            {
-                "Type": match
+            Headers: headers,
+            Keys: keys,
+            Match: {
+                Type: match
             },
-            "Format":
-            {
-                "Type": "UnicodeCaseMap"
+            Format: {
+                Type: 'UnicodeCaseMap'
             },
-            "Type": "Header"
+            Type: 'Header'
         };
     }
 
     function buildAddressTest(headers, keys, match) {
-        addresspart = "All"; // FIXME Matching to the whole address for now
+        addresspart = 'All'; // FIXME Matching to the whole address for now
         return {
-            "Headers": headers,
-            "Keys": keys,
-            "Match":
-            {
-                "Type": match
+            Headers: headers,
+            Keys: keys,
+            Match: {
+                Type: match
             },
-            "Format":
-            {
-                "Type": "UnicodeCaseMap"
+            Format: {
+                Type: 'UnicodeCaseMap'
             },
-            "Type": "Address",
-            "AddressPart":
-            {
-                "Type": addresspart
+            Type: 'Address',
+            AddressPart: {
+                Type: addresspart
             }
         };
     }
 
     function buildAttachmentTest() {
         return {
-            "Headers":["X-Attached"],
-            "Type":"Exists"
+            Headers:['X-Attached'],
+            Type:'Exists'
         };
     }
 
     function buildSetflagThen(read, starred) {
         flags = [];
         if (read) {
-            flags.push("\\Seen");
+            flags.push('\\Seen');
         }
         if (starred) {
-            flags.push("\\Flagged");
+            flags.push('\\Flagged');
         }
         return {
-            "Flags": flags,
-            "Type": "AddFlag"
+            Flags: flags,
+            Type: 'AddFlag'
+        };
+    }
+
+    function buildVacation(message) {
+        return {
+            Message: message,
+            Args: { MIMEType: 'text/html' },
+            Type: 'Vacation\\Vacation'
         };
     }
 
     function buildFileintoThen(name) {
         return {
-            "Name": name,
-            "Type": "FileInto"
+            Name: name,
+            Type: 'FileInto'
         };
     }
 
@@ -579,34 +591,32 @@
             throw { name: 'InvalidInput', message: 'Invalid match keys' };
         }
 
-        if (negate) comparator = "!" + comparator;
+        if (negate) comparator = '!' + comparator;
 
         return buildLabelValueObject(comparator);
     }
 
     function buildLabelValueObject(value) {
         return {
-            "label": LABEL_KEYS[value],
-            "value": value
+            label: LABEL_KEYS[value],
+            value: value
         };
     }
 
-    function buildSimpleCondition(type, comparator, params)
-    {
+    function buildSimpleCondition(type, comparator, params) {
         var condition = {
-            "Type": buildLabelValueObject(type),
-            "Comparator": buildLabelValueObject(comparator)
+            Type: buildLabelValueObject(type),
+            Comparator: buildLabelValueObject(comparator)
         };
         return mergeObjects(condition, params);
     }
 
-    function buildSimpleActions()
-    {
+    function buildSimpleActions() {
         return {
-            "FileInto": [],
-            "Mark": {
-                "Read": false,
-                "Starred": false
+            FileInto: [],
+            Mark: {
+                Read: false,
+                Starred: false
             }
         };
     }
