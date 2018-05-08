@@ -478,7 +478,7 @@
 
     function buildBasicTree(parameters) {
         var treeStructure = [
-            require: buildSieveRequire(parameters.requires),
+            buildSieveRequire(parameters.requires),
             {
                 If:
                 {
