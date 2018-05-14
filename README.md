@@ -2,7 +2,7 @@
 
 Javascript library to wrap sieve configuration
 
-### Simple repreentation
+### Simple representation
 
 ```js
 {

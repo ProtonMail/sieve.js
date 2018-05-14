@@ -3,7 +3,7 @@
  * Sieve/Tree representation builder
  */
 
- var Sieve = (function() {
+var Sieve = (function() {
 
     var DEBUG = false;
 
