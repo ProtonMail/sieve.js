@@ -488,7 +488,7 @@
             }
         ];
 
-        if (parameters.vacation) {
+        if (Object.keys(parameters.vacation).length) {
             treeStructure.push(parameters.vacation);
         }
 
