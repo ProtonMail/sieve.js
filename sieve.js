@@ -263,8 +263,7 @@
         if (tree instanceof Array) {
             var check = tree[0]; // First elements corresponds to the requirements
             if (check.Type === 'Require') {
-                requirements = ['fileinto', 'imap4flags'];
-                if (check.List.indexOf(requirements) < 0) {
+                if (check.List.indexOf('fileinto') < 0 || check.List.indexOf('imap4flags') < 0) {
                     throw { name: 'InvalidInput', message: 'Invalid tree representation: requirements' };
                 }
             }
