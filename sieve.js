@@ -117,7 +117,7 @@
         var type = OPERATOR_KEYS[simple.Operator.value];
         var tests = [];
         var thens = [];
-        var require = [];
+        var requires = [];
         var vacation = {};
 
         for (var index in simple.Conditions)
@@ -219,7 +219,7 @@
         }
 
         if (simple.Actions.Vacation) {
-            require.push('vacation');
+            requires.push('vacation');
             vacation = buildVacation(simple.Actions.Vacation);
         }
 
@@ -227,7 +227,7 @@
             type: type,
             tests: tests,
             thens: thens,
-            require: require,
+            requires: requires,
             vacation: vacation
         });
     }
@@ -262,7 +262,7 @@
 
         if (tree instanceof Array) {
             var check = tree[0]; // First elements corresponds to the requirements
-            if (check.Type === 'require') {
+            if (check.Type === 'Require') {
                 requirements = ['fileinto', 'imap4flags'];
                 if (check.List.indexOf(requirements) < 0) {
                     throw { name: 'InvalidInput', message: 'Invalid tree representation: requirements' };
