@@ -483,7 +483,7 @@
                     Tests: parameters.tests,
                     Type: parameters.type
                 },
-                Then: parameters.actions,
+                Then: parameters.thens,
                 Type: 'If'
             }
         ];
