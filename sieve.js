@@ -102,8 +102,6 @@
         pass = pass && simple.Actions.Mark.hasOwnProperty('Read');
         pass = pass && simple.Actions.Mark.hasOwnProperty('Starred');
 
-        pass = pass && simple.Actions.hasOwnProperty('Vacation');
-
         if (!pass) {
             throw { name: 'InvalidInput', message: 'Invalid simple actions' };
         }
