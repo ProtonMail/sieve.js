@@ -220,15 +220,14 @@
 
         if (simple.Actions.Vacation) {
             requires.push('vacation');
-            vacation = buildVacation(simple.Actions.Vacation);
+            thens.push(buildVacation(simple.Actions.Vacation));
         }
 
         return buildBasicTree({
             type: type,
             tests: tests,
             thens: thens,
-            requires: requires,
-            vacation: vacation
+            requires: requires
         });
     }
 
@@ -399,7 +398,7 @@
                     };
                     break;
 
-                case 'Vacation':
+                case 'Vacation\\Vacation':
                     actions.Vacation = element.Message;
                     break;
 
@@ -486,10 +485,6 @@
                 Type: 'If'
             }
         ];
-
-        if (Object.keys(parameters.vacation).length) {
-            treeStructure.push(parameters.vacation);
-        }
 
         return treeStructure;
     }
