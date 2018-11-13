@@ -3,7 +3,7 @@
  * Sieve/Tree representation builder
  */
 
- var Sieve = (function() {
+var Sieve = (function() {
 
     var DEBUG = false;
 
@@ -109,8 +109,9 @@
         return simple;
     }
 
-    // Convert to Tree repreentation
-    function toTree(simple) {
+    // Convert to Tree representation
+    function toTree(simple)
+    {
         simple = validateSimpleRepresentation(simple);
         simple = JSON.parse(JSON.stringify(simple));
 
@@ -122,7 +123,7 @@
 
         for (var index in simple.Conditions)
         {
-            condition = simple.Conditions[index];
+            var condition = simple.Conditions[index];
             var comparator = condition.Comparator.value;
             var test = null;
             var negate = false;
