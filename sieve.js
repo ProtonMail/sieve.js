@@ -3,7 +3,7 @@
  * Sieve/Tree representation builder
  */
 
-var Sieve = (function() {
+var Sieve = (function () {
 
     var DEBUG = false;
 
@@ -110,7 +110,7 @@ var Sieve = (function() {
     }
 
     // Convert to Tree representation
-    function toTree(simple)
+    function toTree (simple, version)
     {
         simple = validateSimpleRepresentation(simple);
         simple = JSON.parse(JSON.stringify(simple));
@@ -224,12 +224,15 @@ var Sieve = (function() {
             thens.push(buildVacation(simple.Actions.Vacation));
         }
 
-        return buildBasicTree({
-            type: type,
-            tests: tests,
-            thens: thens,
-            requires: requires
-        });
+        return buildBasicTree(
+            {
+                type: type,
+                tests: tests,
+                thens: thens,
+                requires: requires
+            },
+            version
+        );
     }
 
     function fromTree(tree) {
@@ -258,44 +261,58 @@ var Sieve = (function() {
 
     function validateTree(tree) {
         var string = '';
-        var pass = false;
 
+        var mainNode = null;
+        var requiredExtensions = ['fileinto', 'imap4flags'];
         if (tree instanceof Array) {
-            var check = tree[0]; // First elements corresponds to the requirements
-            if (check.Type === 'Require') {
-                if (check.List.indexOf('fileinto') < 0 || check.List.indexOf('imap4flags') < 0) {
-                    throw { name: 'InvalidInput', message: 'Invalid tree representation: requirements' };
+            var treeLength = tree.length;
+            for (var i = 0; i < treeLength; i++) {
+                var node = tree[i];
+                if (node.Type === 'Require') {
+
+                    var extensionIndex = requiredExtensions.length;
+                    while (extensionIndex--) {
+                        var extension = requiredExtensions[extensionIndex];
+                        if (node.List.indexOf(extension) >= 0) {
+                            requiredExtensions.splice(extensionIndex, 1);
+                        }
+                    }
+                } else if (node.Type === 'If') {
+                    var pass = true;
+
+                    if (pass) {
+                        pass = pass && node.hasOwnProperty('If');
+                        string = 'If';
+                    }
+                    // FIXME Figure out whether this is necessary
+                    if (pass) {
+                        pass = pass && node.If.hasOwnProperty('Tests');
+                        string = 'Tests';
+                    }
+                    if (pass) {
+                        pass = pass && node.hasOwnProperty('Then');
+                        string = 'Then';
+                    }
+                    if (pass) {
+                        pass = pass && node.hasOwnProperty('Type');
+                        string = 'Type';
+                    }
+                    if (pass) {
+                        mainNode = node;
+                    }
                 }
             }
 
-            // Second element is used to build the modal
-            tree = tree[1];
-            pass = true;
-
-            if (pass) {
-                pass = pass && tree.hasOwnProperty('If');
-                string = 'If';
-            }
-            // FIXME Figure out whether this is necessary
-            if (pass) {
-                pass = pass && tree.If.hasOwnProperty('Tests');
-                string = 'Tests';
-            }
-            if (pass) {
-                pass = pass && tree.hasOwnProperty('Then');
-                string = 'Then';
-            }
-            if (pass) {
-                pass = pass && tree.hasOwnProperty('Type');
-                string = 'Type';
+            if (requiredExtensions.length) {
+                throw {name: 'InvalidInput', message: 'Invalid tree representation: requirements'};
             }
         }
 
-        if (!pass) {
+        if (!mainNode) {
             throw { name: 'InvalidInput', message: 'Invalid tree representation: ' + string + ' level' };
         }
 
-        return tree;
+        return mainNode;
     }
 
     function iterateCondition(array) {
@@ -417,11 +434,11 @@ var Sieve = (function() {
     // ================
 
     // Public interface to the toTree() function
-    function ToTree(modal) {
+    function ToTree (modal, version = 1) {
         tree = null;
 
         try {
-            tree = toTree(modal);
+            tree = toTree(modal, version);
         } catch (exception) {
             if (DEBUG) {
                 console.error(exception);
@@ -473,21 +490,79 @@ var Sieve = (function() {
     // ===========================
     // @internal Helper functions for building backend filter representation trees from the frontend modal
 
-    function buildBasicTree(parameters) {
-        var treeStructure = [
-            buildSieveRequire(parameters.requires),
-            {
-                If:
+    function buildBasicTree (parameters, version) {
+        var treeStructure = [];
+        if (version === 2) {
+            treeStructure.push(buildSieveRequire(
+                [
+                    'include',
+                    'environment',
+                    'variables',
+                    'relational',
+                    'comparator-i;ascii-numeric',
+                    'spamtest'
+                ],
+                []
+            ));
+        }
+        treeStructure.push(buildSieveRequire(parameters.requires));
+
+        if (version === 2) {
+            treeStructure.push(buildSpamtestTest());
+        }
+
+        treeStructure.push({
+            If:
                 {
                     Tests: parameters.tests,
                     Type: parameters.type
                 },
-                Then: parameters.thens,
-                Type: 'If'
-            }
-        ];
-
+            Then: parameters.thens,
+            Type: 'If'
+        });
         return treeStructure;
+    }
+
+    function buildSpamtestTest () {
+        return {
+            'If': {
+                'Tests': [
+                    {
+                        'Name': 'vnd.proton.spam-threshold',
+                        'Keys': [
+                            '*'
+                        ],
+                        'Format': null,
+                        'Match': {
+                            'Type': 'Matches'
+                        },
+                        'Type': 'Environment'
+                    },
+                    {
+                        'Value': {
+                            'Value': '${1}',
+                            'Type': 'VariableString'
+                        },
+                        'Flags': [],
+                        'Format': {
+                            'Type': 'ASCIINumeric'
+                        },
+                        'Match': {
+                            'Comparator': 'ge',
+                            'Type': 'GreaterEqualsValue'
+                        },
+                        'Type': 'SpamTest'
+                    }
+                ],
+                'Type': 'AllOf'
+            },
+            'Then': [
+                {
+                    'Type': 'Return'
+                }
+            ],
+            'Type': 'If'
+        };
     }
 
     function buildTestNegate(test) {
@@ -497,10 +572,10 @@ var Sieve = (function() {
         };
     }
 
-    function buildSieveRequire(requires)
+    function buildSieveRequire (requires, mandatory = ['fileinto', 'imap4flags'])
     {
         return {
-            List: ['fileinto', 'imap4flags'].concat(requires),
+            List: mandatory.concat(requires),
             Type: 'Require'
         };
     }
