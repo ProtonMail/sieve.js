@@ -4,6 +4,8 @@
  */
 
 var Sieve = (function () {
+    var V1 = 1;
+    var V2 = 2;
 
     var DEBUG = false;
 
@@ -434,7 +436,7 @@ var Sieve = (function () {
     // ================
 
     // Public interface to the toTree() function
-    function ToTree (modal, version = 1) {
+    function ToTree (modal, version = V1) {
         tree = null;
 
         try {
@@ -492,7 +494,7 @@ var Sieve = (function () {
 
     function buildBasicTree (parameters, version) {
         var treeStructure = [];
-        if (version === 2) {
+        if (version === V2) {
             treeStructure.push(buildSieveRequire(
                 [
                     'include',
@@ -507,8 +509,8 @@ var Sieve = (function () {
         }
         treeStructure.push(buildSieveRequire(parameters.requires));
 
-        if (version === 2) {
-            treeStructure.push(buildSpamtestTest());
+        if (version === V2) {
+            Array.prototype.push.apply(treeStructure, buildSpamtestTest());
         }
 
         treeStructure.push({
@@ -524,45 +526,50 @@ var Sieve = (function () {
     }
 
     function buildSpamtestTest () {
-        return {
-            'If': {
-                'Tests': [
+        return [
+            {
+                'Text': '# Generated: Do not run this script on spam messages\n',
+                'Type': 'Comment'
+            }, {
+                'If': {
+                    'Tests': [
+                        {
+                            'Name': 'vnd.proton.spam-threshold',
+                            'Keys': [
+                                '*'
+                            ],
+                            'Format': null,
+                            'Match': {
+                                'Type': 'Matches'
+                            },
+                            'Type': 'Environment'
+                        },
+                        {
+                            'Value': {
+                                'Value': '${1}',
+                                'Type': 'VariableString'
+                            },
+                            'Flags': [],
+                            'Format': {
+                                'Type': 'ASCIINumeric'
+                            },
+                            'Match': {
+                                'Comparator': 'ge',
+                                'Type': 'GreaterEqualsValue'
+                            },
+                            'Type': 'SpamTest'
+                        }
+                    ],
+                    'Type': 'AllOf'
+                },
+                'Then': [
                     {
-                        'Name': 'vnd.proton.spam-threshold',
-                        'Keys': [
-                            '*'
-                        ],
-                        'Format': null,
-                        'Match': {
-                            'Type': 'Matches'
-                        },
-                        'Type': 'Environment'
-                    },
-                    {
-                        'Value': {
-                            'Value': '${1}',
-                            'Type': 'VariableString'
-                        },
-                        'Flags': [],
-                        'Format': {
-                            'Type': 'ASCIINumeric'
-                        },
-                        'Match': {
-                            'Comparator': 'ge',
-                            'Type': 'GreaterEqualsValue'
-                        },
-                        'Type': 'SpamTest'
+                        'Type': 'Return'
                     }
                 ],
-                'Type': 'AllOf'
-            },
-            'Then': [
-                {
-                    'Type': 'Return'
-                }
-            ],
-            'Type': 'If'
-        };
+                'Type': 'If'
+            }
+        ];
     }
 
     function buildTestNegate(test) {

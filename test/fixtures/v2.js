@@ -18,6 +18,10 @@ const tree = [
         'Type': 'Require'
     },
     {
+        'Text': '# Generated: Do not run this script on spam messages\n',
+        'Type': 'Comment'
+    },
+    {
         'If': {
             'Tests': [
                 {
