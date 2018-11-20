@@ -3,7 +3,7 @@
  * Sieve/Tree representation builder
  */
 
-var Sieve = (function () {
+var Sieve = (function() {
     var V1 = 1;
     var V2 = 2;
 
@@ -112,7 +112,7 @@ var Sieve = (function () {
     }
 
     // Convert to Tree representation
-    function toTree (simple, version)
+    function toTree(simple, version)
     {
         simple = validateSimpleRepresentation(simple);
         simple = JSON.parse(JSON.stringify(simple));
@@ -436,7 +436,7 @@ var Sieve = (function () {
     // ================
 
     // Public interface to the toTree() function
-    function ToTree (modal, version = V1) {
+    function ToTree(modal, version = V1) {
         tree = null;
 
         try {
@@ -492,7 +492,7 @@ var Sieve = (function () {
     // ===========================
     // @internal Helper functions for building backend filter representation trees from the frontend modal
 
-    function buildBasicTree (parameters, version) {
+    function buildBasicTree(parameters, version) {
         var treeStructure = [];
         if (version === V2) {
             treeStructure.push(buildSieveRequire(
@@ -525,7 +525,7 @@ var Sieve = (function () {
         return treeStructure;
     }
 
-    function buildSpamtestTest () {
+    function buildSpamtestTest() {
         return [
             {
                 'Text': '# Generated: Do not run this script on spam messages\n',
@@ -579,7 +579,7 @@ var Sieve = (function () {
         };
     }
 
-    function buildSieveRequire (requires, mandatory = ['fileinto', 'imap4flags'])
+    function buildSieveRequire(requires, mandatory = ['fileinto', 'imap4flags'])
     {
         return {
             List: mandatory.concat(requires),
