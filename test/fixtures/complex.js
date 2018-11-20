@@ -236,6 +236,8 @@ var tree = [
     }
 ];
 
+var simple = {};
+
 module.exports = {
     tree,
     simple

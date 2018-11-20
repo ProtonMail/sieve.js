@@ -4,6 +4,7 @@ import archive from './fixtures/archive';
 import folder from './fixtures/folder';
 import v2 from './fixtures/v2';
 import v2SpamTest from './fixtures/v2SpamtestOnly';
+import complex from './fixtures/complex';
 
 function testToTree (t, {simple, tree}, version = 1) {
     const generatedSimple = Sieve.toTree(simple, version);
@@ -27,5 +28,8 @@ test('folder from tree', t => testFromTree(t, folder));
 
 test('v2 to tree', t => testToTree(t, v2, 2));
 test('v2 from tree', t => testFromTree(t, v2, 2));
+
+// test('complex to tree', t => testToTree(t, complex, 2));
+// test('complex from tree', t => testFromTree(t, complex, 2));
 
 test('v2 with spamtest only from tree', t => testFromTree(t, v2SpamTest, 2));

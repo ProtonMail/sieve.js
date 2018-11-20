@@ -122,6 +122,7 @@ var Sieve = (function() {
         var thens = [];
         var requires = [];
         var vacation = {};
+        var comparators = [];
 
         for (var index in simple.Conditions)
         {
@@ -129,6 +130,8 @@ var Sieve = (function() {
             var comparator = condition.Comparator.value;
             var test = null;
             var negate = false;
+
+            comparators.push(comparator);
 
             switch (comparator)
             {
@@ -231,7 +234,8 @@ var Sieve = (function() {
                 type: type,
                 tests: tests,
                 thens: thens,
-                requires: requires
+                requires: requires,
+                comparators: comparators
             },
             version
         );
@@ -492,6 +496,28 @@ var Sieve = (function() {
     // ===========================
     // @internal Helper functions for building backend filter representation trees from the frontend modal
 
+    function buildComparatorComment(comparators, type) {
+        var commentArray = ['/**'];
+
+        if (type === 'AllOf') {
+            commentArray.push(' @type and');
+        } else if (type === 'AnyOf') {
+            commentArray.push(' @type or');
+        } else {
+            throw new Error('Undefined type ' + type);
+        }
+
+        Array.prototype.push.apply(commentArray, comparators.map(function (comparator) {
+            return ' @comparator ' + comparator;
+        }));
+
+        commentArray.push('/');
+        return {
+            Text: commentArray.join('\r\n *'),
+            Type: 'Comment'
+        };
+    }
+
     function buildBasicTree(parameters, version) {
         var treeStructure = [];
         if (version === V2) {
@@ -511,6 +537,7 @@ var Sieve = (function() {
 
         if (version === V2) {
             Array.prototype.push.apply(treeStructure, buildSpamtestTest());
+            treeStructure.push(buildComparatorComment(parameters.comparators, parameters.type));
         }
 
         treeStructure.push({

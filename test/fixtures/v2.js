@@ -61,6 +61,10 @@ const tree = [
         'Type': 'If'
     },
     {
+        'Text': "/**\r\n * @type and\r\n * @comparator contains\r\n */",
+        'Type': 'Comment'
+    },
+    {
         'If':
             {
                 'Tests': [
