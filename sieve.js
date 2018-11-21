@@ -227,7 +227,7 @@ var Sieve = (function() {
 
         if (simple.Actions.Vacation) {
             requires.push('vacation');
-            thens.push(buildVacation(simple.Actions.Vacation));
+            thens.push(buildVacation(simple.Actions.Vacation, version));
         }
 
         return buildBasicTree(
@@ -282,7 +282,6 @@ var Sieve = (function() {
             for (var i = 0; i < treeLength; i++) {
                 var node = tree[i];
                 if (node.Type === 'Require') {
-
                     var extensionIndex = requiredExtensions.length;
                     while (extensionIndex--) {
                         var extension = requiredExtensions[extensionIndex];
@@ -509,6 +508,7 @@ var Sieve = (function() {
                     };
                     break;
 
+                case 'Vacation':
                 case 'Vacation\\Vacation':
                     actions.Vacation = element.Message;
                     break;
@@ -747,11 +747,11 @@ var Sieve = (function() {
         };
     }
 
-    function buildVacation(message) {
+    function buildVacation(message, version) {
         return {
             Message: message,
             Args: { MIMEType: 'text/html' },
-            Type: 'Vacation\\Vacation'
+            Type: version === V1 ? 'Vacation\\Vacation' : 'Vacation'
         };
     }
 

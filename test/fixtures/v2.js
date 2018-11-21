@@ -18,7 +18,7 @@ const tree = [
         'Type': 'Require'
     },
     {
-        'Text': '# Generated: Do not run this script on spam messages\n',
+        'Text': '# Generated: Do not run this script on spam messages',
         'Type': 'Comment'
     },
     {
