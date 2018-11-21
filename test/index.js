@@ -6,6 +6,7 @@ import v2 from './fixtures/v2';
 import v2SpamTest from './fixtures/v2SpamtestOnly';
 import v1Starts from './fixtures/v1StartsEndsTest';
 import v2Starts from './fixtures/v2StartsEndsTest';
+import v2Attchments from './fixtures/v2Attachments';
 
 function testToTree (t, {simple, tree}, version = 1) {
     const generatedSimple = Sieve.toTree(simple, version);
@@ -38,5 +39,8 @@ test('v2 with spamtest only from tree', t => testFromTree(t, v2SpamTest, 2));
 test('v2 starts with to tree', t => testToTree(t, v2Starts, 2));
 test('v2 starts with from tree', t => testFromTree(t, v2Starts, 2));
 
-test('v1 starts with to tree', t => testToTree(t, v1Starts, 1));
-test('v1 starts with from tree', t => testFromTree(t, v1Starts, 1));
+test('v1 starts and ends with to tree', t => testToTree(t, v1Starts, 1));
+test('v1 starts and ends with from tree', t => testFromTree(t, v1Starts, 1));
+
+test('v2 attachments to tree', t => testToTree(t, v2Attchments, 2));
+test('v2 attachments from tree', t => testFromTree(t, v2Attchments, 2));

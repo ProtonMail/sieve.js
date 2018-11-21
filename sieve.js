@@ -14,7 +14,8 @@ var Sieve = (function() {
         contains: 'Contains',
         matches: 'Matches',
         starts: 'Starts',
-        ends: 'Ends'
+        ends: 'Ends',
+        'default': 'Defaults'
     };
 
     var OPERATOR_KEYS = {
@@ -133,7 +134,11 @@ var Sieve = (function() {
             var test = null;
             var negate = false;
 
-            comparators.push(comparator);
+            var comment = comparator;
+            if (condition.Type.value === 'attachments') {
+                comment = (comment.startsWith('!') ? '!' : '') + 'default';
+            }
+            comparators.push(comment);
 
             switch (comparator)
             {
@@ -345,7 +350,7 @@ var Sieve = (function() {
                 if (annotationType === 'type') {
                     type = value;
                 } else if (annotationType === 'comparator') {
-                    comparators.push(value);
+                    comparators.push(value.replace('default', 'contains'));
                 }
             }
         });
@@ -630,7 +635,7 @@ var Sieve = (function() {
     function buildSpamtestTest() {
         return [
             {
-                'Text': '# Generated: Do not run this script on spam messages\n',
+                'Text': '# Generated: Do not run this script on spam messages',
                 'Type': 'Comment'
             }, {
                 'If': {
