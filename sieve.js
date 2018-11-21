@@ -12,7 +12,9 @@ var Sieve = (function() {
     var MATCH_KEYS = {
         is: 'Is',
         contains: 'Contains',
-        matches: 'Matches'
+        matches: 'Matches',
+        starts: 'Starts',
+        ends: 'Ends'
     };
 
     var OPERATOR_KEYS = {
@@ -181,22 +183,18 @@ var Sieve = (function() {
             switch(condition.Type.value)
             {
                 case 'sender':
-                    header = ['From'];
-                    test = buildAddressTest(header, values, match);
+                    test = buildAddressTest(['From'], values, match);
                     break;
 
                 case 'recipient':
-                    header = ['To', 'Cc', 'Bcc'];
-                    test = buildAddressTest(header, values, match);
+                    test = buildAddressTest(['To', 'Cc', 'Bcc'], values, match);
                     break;
 
                 case 'subject':
-                    header = ['Subject'];
-                    test = buildHeaderTest(header, values, match);
+                    test = buildHeaderTest(['Subject'], values, match);
                     break;
 
                 case 'attachments':
-                    header = null;
                     test = buildAttachmentTest();
                     break;
             }
@@ -209,16 +207,14 @@ var Sieve = (function() {
         for (var index in simple.Actions.FileInto)
         {
             var destination = simple.Actions.FileInto[index];
-            if (destination !== null) {
-                then = buildFileintoThen(destination);
-                thens.push(then);
+            if (destination != null) {
+                thens.push(buildFileintoThen(destination));
             }
         }
 
         // Mark: (needs to only be included if flags are not false)
         if (simple.Actions.Mark.Read !== false || simple.Actions.Mark.Starred !== false) {
-            then = buildSetflagThen(simple.Actions.Mark.Read, simple.Actions.Mark.Starred);
-            thens.push(then);
+            thens.push(buildSetflagThen(simple.Actions.Mark.Read, simple.Actions.Mark.Starred));
             thens.push({
                 Type: 'Keep'
             });
@@ -242,7 +238,8 @@ var Sieve = (function() {
     }
 
     function fromTree(tree) {
-        tree = validateTree(tree);
+        var validated = validateTree(tree);
+        tree = validated.tree;
         tree = JSON.parse(JSON.stringify(tree));
 
         var simple = {
@@ -251,16 +248,20 @@ var Sieve = (function() {
             Actions: {}
         };
 
+        var comment = iterateComparator(validated.comment);
 
-        operator = invert(OPERATOR_KEYS)[tree.If.Type];
+        var operator = invert(OPERATOR_KEYS)[tree.If.Type];
         simple.Operator.label = LABEL_KEYS[operator];
         simple.Operator.value = operator;
 
-        conditions = iterateCondition(tree.If.Tests);
+        if (comment && comment.type && operator !== comment.type) {
+            throw {name: 'UnsupportedRepresentation', message: 'Comment and computed type incompatible'};
+        }
+
+        var conditions = iterateCondition(tree.If.Tests, comment && comment.comparators);
         simple.Conditions = simple.Conditions.concat(conditions);
 
-        actions = iterateAction(tree.Then);
-        simple.Actions = actions;
+        simple.Actions = iterateAction(tree.Then);
 
         return simple;
     }
@@ -270,6 +271,7 @@ var Sieve = (function() {
 
         var mainNode = null;
         var requiredExtensions = ['fileinto', 'imap4flags'];
+        var comment = null;
         if (tree instanceof Array) {
             var treeLength = tree.length;
             for (var i = 0; i < treeLength; i++) {
@@ -306,6 +308,8 @@ var Sieve = (function() {
                     if (pass) {
                         mainNode = node;
                     }
+                } else if (node.Type === 'Comment' && node.Text.match(/^\/\*\*\r\n(?:\s\*\s@(?:type|comparator)[^\r]+\r\n)+\s\*\/$/)) {
+                    comment = node;
                 }
             }
 
@@ -318,19 +322,105 @@ var Sieve = (function() {
             throw { name: 'InvalidInput', message: 'Invalid tree representation: ' + string + ' level' };
         }
 
-        return mainNode;
+        return {tree: mainNode, comment: comment};
     }
 
-    function iterateCondition(array) {
+    function iterateComparator(comparator) {
+        if (!comparator) {
+            return null;
+        }
+
+        var text = comparator.Text;
+        var chunks = text.split('\r\n *');
+        chunks = chunks.splice(1, chunks.length - 2);
+
+        var type = null;
+        var comparators = [];
+        chunks.forEach(function (chunk) {
+            var res = chunk.match(/\s@(\w*)\s(.*)$/);
+            if (res) {
+                var annotationType = res[1];
+                var value = res[2];
+
+                if (annotationType === 'type') {
+                    type = value;
+                } else if (annotationType === 'comparator') {
+                    comparators.push(value);
+                }
+            }
+        });
+
+        if (type === 'and') {
+            type = 'all';
+        } else if (type === 'or') {
+            type = 'any';
+        }
+        return {type: type, comparators: comparators};
+    }
+
+    function buildSimpleParams(comparator, values, negate, commentComparator) {
+        if (commentComparator) {
+            if (commentComparator === 'starts' || commentComparator === 'ends') {
+                if (comparator !== 'Matches') {
+                    throw {
+                        name: 'UnsupportedRepresentation',
+                        message: `Comment and computed comparator incompatible: ${comparator} instead of matches`
+                    };
+                }
+                comparator = commentComparator[0].toUpperCase() + commentComparator.slice(1);
+                values = values.map(function (value) {
+                        if (commentComparator === 'ends') {
+                            return value.replace(/^\*+/g, '');
+                        }
+                        return value.replace(/\*+$/g, '');
+                    }
+                );
+            } else {
+                if (comparator.toLowerCase() !== commentComparator) {
+                    throw {
+                        name: 'UnsupportedRepresentation',
+                        message: `Comment and computed comparator incompatible: ${comparator} instead of ${commentComparator}`
+                    };
+                }
+            }
+        }
+
+        comparator = buildSimpleComparator(comparator, negate);
+
+        return {
+            Comparator: comparator,
+            Values: values
+        };
+    }
+
+    function iterateCondition(array, commentComparators) {
+        if (!commentComparators) {
+            commentComparators = [];
+        }
         var conditions = [];
 
-        for (var index in array) {
+        for (var index = 0; index < array.length; index++) {
             var element = array[index];
+            var commentComparator = commentComparators[index];
+            var commentNegate = undefined;
+            if (commentComparator) {
+                commentNegate = commentComparator.startsWith('!');
+                if (commentNegate) {
+                    commentComparator = commentComparator.slice(1);
+                }
+            }
 
             var negate = false;
             if (element.Type === 'Not') {
                 negate = true;
                 element = element.Test;
+            }
+
+            if (commentNegate != null && commentNegate !== negate) {
+                throw {
+                    name: 'UnsupportedRepresentation',
+                    message: `Comment and computed negation incompatible`
+                };
             }
 
             var type = null;
@@ -365,20 +455,12 @@ var Sieve = (function() {
                     }
                     break;
             }
+            var comparator = type === 'attachments' ? 'Contains' : element.Match.Type;
+            var values = (element.Keys !== undefined) ? element.Keys : [];
 
-            if (type === 'attachments') {
-                comparator = buildSimpleComparator('Contains', negate);
-            } else {
-                comparator = buildSimpleComparator(element.Match.Type, negate);
-            }
+            params = buildSimpleParams(comparator, values, negate, commentComparator);
 
-            params = {
-                Comparator: comparator,
-                Values: (element.Keys !== undefined) ? element.Keys : []
-            };
-
-            condition = buildSimpleCondition(type, comparator, params);
-            conditions.push(condition);
+            conditions.push(buildSimpleCondition(type, comparator, params));
         }
 
         return conditions;
@@ -441,34 +523,27 @@ var Sieve = (function() {
 
     // Public interface to the toTree() function
     function ToTree(modal, version = V1) {
-        tree = null;
 
         try {
-            tree = toTree(modal, version);
+            return toTree(modal, version);
         } catch (exception) {
             if (DEBUG) {
                 console.error(exception);
             }
-            tree = [];
+            return [];
         }
-
-        return tree;
     }
 
     // Public interface to the fromTree() function
     function FromTree(tree) {
-        modal = null;
-
         try {
-            modal = fromTree(tree);
+            return fromTree(tree);
         } catch (exception) {
             if (DEBUG) {
                 console.error(exception);
             }
-            modal = {};
+            return {};
         }
-
-        return modal;
     }
 
     // Generic helper functions
@@ -488,7 +563,7 @@ var Sieve = (function() {
 
     function unique(array) {
         return array.filter(function(item, pos, self) {
-            return self.indexOf(item) == pos;
+            return self.indexOf(item) === pos;
         });
     }
 
@@ -629,7 +704,7 @@ var Sieve = (function() {
     }
 
     function buildAddressTest(headers, keys, match) {
-        addresspart = 'All'; // FIXME Matching to the whole address for now
+        var addresspart = 'All'; // FIXME Matching to the whole address for now
         return {
             Headers: headers,
             Keys: keys,
@@ -654,7 +729,7 @@ var Sieve = (function() {
     }
 
     function buildSetflagThen(read, starred) {
-        flags = [];
+        var flags = [];
         if (read) {
             flags.push('\\Seen');
         }
@@ -689,7 +764,7 @@ var Sieve = (function() {
     function buildSimpleComparator(comparator, negate) {
         comparator = invert(MATCH_KEYS)[comparator];
 
-        if (comparator === null || comparator === undefined) {
+        if (comparator == null) {
             throw { name: 'InvalidInput', message: 'Invalid match keys' };
         }
 
@@ -723,12 +798,10 @@ var Sieve = (function() {
         };
     }
 
-    var expose = {
+    return {
         fromTree: FromTree,
         toTree: ToTree
     };
-
-    return expose;
 }());
 
 if (typeof module !== 'undefined' && module.exports) {
