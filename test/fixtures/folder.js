@@ -2,87 +2,72 @@
  * Sieve/Tree test inputs
  */
 
-const tree =  [
+const tree = [
     {
-        "List": [
-            "fileinto",
-            "imap4flags"
-        ],
-        "Type": "Require"
+        List: ['fileinto', 'imap4flags'],
+        Type: 'Require'
     },
     {
-        "If":
-        {
-            "Tests": [
+        If: {
+            Tests: [
                 {
-                    "Headers": [
-                        "Subject"
-                    ],
-                    "Keys": [
-                        "Order",
-                    ],
-                    "Match": {
-                        "Type": "Contains"
+                    Headers: ['Subject'],
+                    Keys: ['Order'],
+                    Match: {
+                        Type: 'Contains'
                     },
-                    "Format": {
-                        "Type": "UnicodeCaseMap"
+                    Format: {
+                        Type: 'UnicodeCaseMap'
                     },
-                    "Type": "Header"
+                    Type: 'Header'
                 }
-        ],
-        "Type": "AllOf"
+            ],
+            Type: 'AllOf'
         },
-        "Then": [
+        Then: [
             {
-                "Type": "FileInto",
-                "Name": "important"
+                Type: 'FileInto',
+                Name: 'important'
             },
             {
-                "Type": "FileInto",
-                "Name": "Folder"
+                Type: 'FileInto',
+                Name: 'Folder'
             },
             {
-                "Type": "AddFlag",
-                "Flags": ["\\Seen"]
+                Type: 'AddFlag',
+                Flags: ['\\Seen']
             },
             {
-                "Type": "Keep"
+                Type: 'Keep'
             }
         ],
-        "Type": "If"
+        Type: 'If'
     }
 ];
 
 const simple = {
-    "Operator": {
-        "label": "All",
-        "value": "all"
+    Operator: {
+        label: 'All',
+        value: 'all'
     },
-    "Conditions": [
+    Conditions: [
         {
-            "Values": [
-                "Order",
-            ],
-            "Type":
-            {
-                "label": "Subject",
-                "value": "subject"
+            Values: ['Order'],
+            Type: {
+                label: 'Subject',
+                value: 'subject'
             },
-            "Comparator":
-            {
-                "label": "contains",
-                "value": "contains"
+            Comparator: {
+                label: 'contains',
+                value: 'contains'
             }
         }
     ],
-    "Actions": {
-        "FileInto": [
-            "important",
-            "Folder"
-        ],
-        "Mark": {
-            "Read": true,
-            "Starred": false
+    Actions: {
+        FileInto: ['important', 'Folder'],
+        Mark: {
+            Read: true,
+            Starred: false
         }
     }
 };

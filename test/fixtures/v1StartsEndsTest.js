@@ -1,117 +1,94 @@
 const tree = [
     {
-        'List': [
-            'fileinto',
-            'imap4flags'
-        ],
-        'Type': 'Require'
+        List: ['fileinto', 'imap4flags'],
+        Type: 'Require'
     },
     {
-        'If':
-            {
-                'Tests': [
-                    {
-                        'Headers': [
-                            'Subject'
-                        ],
-                        'Keys': [
-                            'starts with*'
-                        ],
-                        'Match': {
-                            'Type': 'Matches'
-                        },
-                        'Format': {
-                            'Type': 'UnicodeCaseMap'
-                        },
-                        'Type': 'Header'
+        If: {
+            Tests: [
+                {
+                    Headers: ['Subject'],
+                    Keys: ['starts with*'],
+                    Match: {
+                        Type: 'Matches'
                     },
-                    {
-                        'Test': {
-                            'Headers': [
-                                'Subject'
-                            ],
-                            'Keys': [
-                                '*ends with'
-                            ],
-                            'Match': {
-                                'Type': 'Matches'
-                            },
-                            'Format': {
-                                'Type': 'UnicodeCaseMap'
-                            },
-                            'Type': 'Header'
+                    Format: {
+                        Type: 'UnicodeCaseMap'
+                    },
+                    Type: 'Header'
+                },
+                {
+                    Test: {
+                        Headers: ['Subject'],
+                        Keys: ['*ends with'],
+                        Match: {
+                            Type: 'Matches'
                         },
-                        'Type': 'Not'
-                    }
-                ],
-                'Type': 'AllOf'
-            },
-        'Then': [
+                        Format: {
+                            Type: 'UnicodeCaseMap'
+                        },
+                        Type: 'Header'
+                    },
+                    Type: 'Not'
+                }
+            ],
+            Type: 'AllOf'
+        },
+        Then: [
             {
-                'Type': 'FileInto',
-                'Name': 'important'
-            },
-            {
-                'Type': 'FileInto',
-                'Name': 'Folder'
-            },
-            {
-                'Type': 'AddFlag',
-                'Flags': ['\\Seen']
+                Type: 'FileInto',
+                Name: 'important'
             },
             {
-                'Type': 'Keep'
+                Type: 'FileInto',
+                Name: 'Folder'
+            },
+            {
+                Type: 'AddFlag',
+                Flags: ['\\Seen']
+            },
+            {
+                Type: 'Keep'
             }
         ],
-        'Type': 'If'
+        Type: 'If'
     }
 ];
 
 const simple = {
-    'Operator': {
-        'label': 'All',
-        'value': 'all'
+    Operator: {
+        label: 'All',
+        value: 'all'
     },
-    'Conditions': [
+    Conditions: [
         {
-            'Values': [
-                'starts with*'
-            ],
-            'Type':
-                {
-                    'label': 'Subject',
-                    'value': 'subject'
-                },
-            'Comparator':
-                {
-                    'label': 'matches',
-                    'value': 'matches'
-                }
+            Values: ['starts with*'],
+            Type: {
+                label: 'Subject',
+                value: 'subject'
+            },
+            Comparator: {
+                label: 'matches',
+                value: 'matches'
+            }
         },
         {
-            'Values': [
-                '*ends with'
-            ],
-            'Type':
-                {
-                    'label': 'Subject',
-                    'value': 'subject'
-                },
-            'Comparator':
-                {
-                    'label': 'does not match',
-                    'value': '!matches'
-                }
+            Values: ['*ends with'],
+            Type: {
+                label: 'Subject',
+                value: 'subject'
+            },
+            Comparator: {
+                label: 'does not match',
+                value: '!matches'
+            }
         }
     ],
-    'Actions': {
-        'FileInto': [
-            'important',
-            'Folder'
-        ],
-        'Mark': {
-            'Read': true,
-            'Starred': false
+    Actions: {
+        FileInto: ['important', 'Folder'],
+        Mark: {
+            Read: true,
+            Starred: false
         }
     }
 };

@@ -1,142 +1,118 @@
 const tree = [
     {
-        'List': [
-            'include',
-            'environment',
-            'variables',
-            'relational',
-            'comparator-i;ascii-numeric',
-            'spamtest'
-        ],
-        'Type': 'Require'
+        List: ['include', 'environment', 'variables', 'relational', 'comparator-i;ascii-numeric', 'spamtest'],
+        Type: 'Require'
     },
     {
-        'List': [
-            'fileinto',
-            'imap4flags'
-        ],
-        'Type': 'Require'
+        List: ['fileinto', 'imap4flags'],
+        Type: 'Require'
     },
     {
-        'Text': '# Generated: Do not run this script on spam messages',
-        'Type': 'Comment'
+        Text: '# Generated: Do not run this script on spam messages',
+        Type: 'Comment'
     },
     {
-        'If': {
-            'Tests': [
+        If: {
+            Tests: [
                 {
-                    'Name': 'vnd.proton.spam-threshold',
-                    'Keys': [
-                        '*'
-                    ],
-                    'Format': null,
-                    'Match': {
-                        'Type': 'Matches'
+                    Name: 'vnd.proton.spam-threshold',
+                    Keys: ['*'],
+                    Format: null,
+                    Match: {
+                        Type: 'Matches'
                     },
-                    'Type': 'Environment'
+                    Type: 'Environment'
                 },
                 {
-                    'Value': {
-                        'Value': '${1}',
-                        'Type': 'VariableString'
+                    Value: {
+                        Value: '${1}',
+                        Type: 'VariableString'
                     },
-                    'Flags': [],
-                    'Format': {
-                        'Type': 'ASCIINumeric'
+                    Flags: [],
+                    Format: {
+                        Type: 'ASCIINumeric'
                     },
-                    'Match': {
-                        'Comparator': 'ge',
-                        'Type': 'GreaterEqualsValue'
+                    Match: {
+                        Comparator: 'ge',
+                        Type: 'GreaterEqualsValue'
                     },
-                    'Type': 'SpamTest'
+                    Type: 'SpamTest'
                 }
             ],
-            'Type': 'AllOf'
+            Type: 'AllOf'
         },
-        'Then': [
+        Then: [
             {
-                'Type': 'Return'
+                Type: 'Return'
             }
         ],
-        'Type': 'If'
+        Type: 'If'
     },
     {
-        'Text': "/**\r\n * @type and\r\n * @comparator contains\r\n */",
-        'Type': 'Comment'
+        Text: '/**\r\n * @type and\r\n * @comparator contains\r\n */',
+        Type: 'Comment'
     },
     {
-        'If':
+        If: {
+            Tests: [
+                {
+                    Headers: ['Subject'],
+                    Keys: ['Order'],
+                    Match: {
+                        Type: 'Contains'
+                    },
+                    Format: {
+                        Type: 'UnicodeCaseMap'
+                    },
+                    Type: 'Header'
+                }
+            ],
+            Type: 'AllOf'
+        },
+        Then: [
             {
-                'Tests': [
-                    {
-                        'Headers': [
-                            'Subject'
-                        ],
-                        'Keys': [
-                            'Order'
-                        ],
-                        'Match': {
-                            'Type': 'Contains'
-                        },
-                        'Format': {
-                            'Type': 'UnicodeCaseMap'
-                        },
-                        'Type': 'Header'
-                    }
-                ],
-                'Type': 'AllOf'
-            },
-        'Then': [
-            {
-                'Type': 'FileInto',
-                'Name': 'important'
+                Type: 'FileInto',
+                Name: 'important'
             },
             {
-                'Type': 'FileInto',
-                'Name': 'Folder'
+                Type: 'FileInto',
+                Name: 'Folder'
             },
             {
-                'Type': 'AddFlag',
-                'Flags': ['\\Seen']
+                Type: 'AddFlag',
+                Flags: ['\\Seen']
             },
             {
-                'Type': 'Keep'
+                Type: 'Keep'
             }
         ],
-        'Type': 'If'
+        Type: 'If'
     }
 ];
 
 const simple = {
-    'Operator': {
-        'label': 'All',
-        'value': 'all'
+    Operator: {
+        label: 'All',
+        value: 'all'
     },
-    'Conditions': [
+    Conditions: [
         {
-            'Values': [
-                'Order'
-            ],
-            'Type':
-                {
-                    'label': 'Subject',
-                    'value': 'subject'
-                },
-            'Comparator':
-                {
-                    'label': 'contains',
-                    'value': 'contains'
-                }
+            Values: ['Order'],
+            Type: {
+                label: 'Subject',
+                value: 'subject'
+            },
+            Comparator: {
+                label: 'contains',
+                value: 'contains'
+            }
         }
     ],
-    'Actions': {
-        'FileInto': [
-            'important',
-            'Folder'
-        ],
-        'Mark': {
-            'Read': true,
-            'Starred': false
+    Actions: {
+        FileInto: ['important', 'Folder'],
+        Mark: {
+            Read: true,
+            Starred: false
         }
     }
 };

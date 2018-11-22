@@ -4,233 +4,195 @@
 
 var tree = [
     {
-        "List": [
-            "fileinto",
-            "imap4flags"
-        ],
-        "Type": "Require"
+        List: ['fileinto', 'imap4flags'],
+        Type: 'Require'
     },
     {
-        "If": {
-            "Tests": [
+        If: {
+            Tests: [
                 {
-                    "Headers": [
-                        "From"
-                    ],
-                    "Keys": [
-                        "noreply@damejidlo.cz",
-                        "sluzebnicek@alza.cz"
-                    ],
-                    "Match": {
-                        "Type": "Is"
+                    Headers: ['From'],
+                    Keys: ['noreply@damejidlo.cz', 'sluzebnicek@alza.cz'],
+                    Match: {
+                        Type: 'Is'
                     },
-                    "Format": {
-                        "Type": "UnicodeCaseMap"
+                    Format: {
+                        Type: 'UnicodeCaseMap'
                     },
-                    "Type": "Address",
-                    "AddressPart": {
-                        "Type": "All"
+                    Type: 'Address',
+                    AddressPart: {
+                        Type: 'All'
                     }
                 },
                 {
-                    "Headers": [
-                        "subject"
-                    ],
-                    "Keys": [
-                        "*order*"
-                    ],
-                    "Match": {
-                        "Type": "Matches"
+                    Headers: ['subject'],
+                    Keys: ['*order*'],
+                    Match: {
+                        Type: 'Matches'
                     },
-                    "Format": {
-                        "Type": "UnicodeCaseMap"
+                    Format: {
+                        Type: 'UnicodeCaseMap'
                     },
-                    "Type": "Header"
+                    Type: 'Header'
                 }
             ],
-            "Type": "AllOf"
+            Type: 'AllOf'
         },
-        "Then": [
+        Then: [
             {
-                "Name": "archive",
-                "Type": "FileInto"
+                Name: 'archive',
+                Type: 'FileInto'
             },
             {
-                "Flags": [
-                    "\\Seen"
-                ],
-                "Type": "AddFlag"
+                Flags: ['\\Seen'],
+                Type: 'AddFlag'
             },
             {
-                "Type": "Keep"
+                Type: 'Keep'
             }
         ],
-        "Type": "If",
-        "ElseIfs": [
+        Type: 'If',
+        ElseIfs: [
             {
-                "If": {
-                    "Tests": [
+                If: {
+                    Tests: [
                         {
-                            "Headers": [
-                                "From"
-                            ],
-                            "Keys": [
-                                "zakaznici@damejidlo.cz"
-                            ],
-                            "Match": {
-                                "Type": "Is"
+                            Headers: ['From'],
+                            Keys: ['zakaznici@damejidlo.cz'],
+                            Match: {
+                                Type: 'Is'
                             },
-                            "Format": {
-                                "Type": "UnicodeCaseMap"
+                            Format: {
+                                Type: 'UnicodeCaseMap'
                             },
-                            "Type": "Address",
-                            "AddressPart": {
-                                "Type": "All"
+                            Type: 'Address',
+                            AddressPart: {
+                                Type: 'All'
                             }
                         }
                     ],
-                    "Type": "AllOf"
+                    Type: 'AllOf'
                 },
-                "Then": [
+                Then: [
                     {
-                        "Name": "archive",
-                        "Type": "FileInto"
+                        Name: 'archive',
+                        Type: 'FileInto'
                     },
                     {
-                        "Flags": [
-                            "\\Seen"
-                        ],
-                        "Type": "AddFlag"
+                        Flags: ['\\Seen'],
+                        Type: 'AddFlag'
                     },
                     {
-                        "Type": "Keep"
+                        Type: 'Keep'
                     }
                 ]
             },
             {
-                "If": {
-                    "Tests": [
+                If: {
+                    Tests: [
                         {
-                            "Headers": [
-                                "From"
-                            ],
-                            "Keys": [
-                                "do_not_reply@gog.com"
-                            ],
-                            "Match": {
-                                "Type": "Is"
+                            Headers: ['From'],
+                            Keys: ['do_not_reply@gog.com'],
+                            Match: {
+                                Type: 'Is'
                             },
-                            "Format": {
-                                "Type": "UnicodeCaseMap"
+                            Format: {
+                                Type: 'UnicodeCaseMap'
                             },
-                            "Type": "Address",
-                            "AddressPart": {
-                                "Type": "All"
+                            Type: 'Address',
+                            AddressPart: {
+                                Type: 'All'
                             }
                         }
                     ],
-                    "Type": "AllOf"
+                    Type: 'AllOf'
                 },
-                "Then": [
+                Then: [
                     {
-                        "Name": "archive",
-                        "Type": "FileInto"
+                        Name: 'archive',
+                        Type: 'FileInto'
                     },
                     {
-                        "Flags": [
-                            "\\Seen"
-                        ],
-                        "Type": "AddFlag"
+                        Flags: ['\\Seen'],
+                        Type: 'AddFlag'
                     },
                     {
-                        "Type": "Keep"
+                        Type: 'Keep'
                     }
                 ]
             },
             {
-                "If": {
-                    "Tests": [
+                If: {
+                    Tests: [
                         {
-                            "Headers": [
-                                "From"
-                            ],
-                            "Keys": [
-                                "do_not_reply@gog.com"
-                            ],
-                            "Match": {
-                                "Type": "Is"
+                            Headers: ['From'],
+                            Keys: ['do_not_reply@gog.com'],
+                            Match: {
+                                Type: 'Is'
                             },
-                            "Format": {
-                                "Type": "UnicodeCaseMap"
+                            Format: {
+                                Type: 'UnicodeCaseMap'
                             },
-                            "Type": "Address",
-                            "AddressPart": {
-                                "Type": "All"
+                            Type: 'Address',
+                            AddressPart: {
+                                Type: 'All'
                             }
                         }
                     ],
-                    "Type": "AllOf"
+                    Type: 'AllOf'
                 },
-                "Then": [
+                Then: [
                     {
-                        "Name": "archive",
-                        "Type": "FileInto"
+                        Name: 'archive',
+                        Type: 'FileInto'
                     },
                     {
-                        "Flags": [
-                            "\\Seen"
-                        ],
-                        "Type": "AddFlag"
+                        Flags: ['\\Seen'],
+                        Type: 'AddFlag'
                     },
                     {
-                        "Type": "Keep"
+                        Type: 'Keep'
                     }
                 ]
             },
             {
-                "If": {
-                    "Tests": [
+                If: {
+                    Tests: [
                         {
-                            "Headers": [
-                                "From"
-                            ],
-                            "Keys": [
-                                "no-reply@coinbase.com"
-                            ],
-                            "Match": {
-                                "Type": "Is"
+                            Headers: ['From'],
+                            Keys: ['no-reply@coinbase.com'],
+                            Match: {
+                                Type: 'Is'
                             },
-                            "Format": {
-                                "Type": "UnicodeCaseMap"
+                            Format: {
+                                Type: 'UnicodeCaseMap'
                             },
-                            "Type": "Address",
-                            "AddressPart": {
-                                "Type": "All"
+                            Type: 'Address',
+                            AddressPart: {
+                                Type: 'All'
                             }
                         }
                     ],
-                    "Type": "AllOf"
+                    Type: 'AllOf'
                 },
-                "Then": [
+                Then: [
                     {
-                        "Name": "archive",
-                        "Type": "FileInto"
+                        Name: 'archive',
+                        Type: 'FileInto'
                     },
                     {
-                        "Flags": [
-                            "\\Seen"
-                        ],
-                        "Type": "AddFlag"
+                        Flags: ['\\Seen'],
+                        Type: 'AddFlag'
                     },
                     {
-                        "Type": "Keep"
+                        Type: 'Keep'
                     }
                 ]
             }
         ],
-        "Else": [
+        Else: [
             {
-                "Type": "Keep"
+                Type: 'Keep'
             }
         ]
     }
