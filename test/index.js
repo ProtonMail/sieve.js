@@ -21,19 +21,11 @@ function testFromTree(t, { simple, tree }, version = 1) {
 
 test('archive to tree', (t) => testToTree(t, archive));
 
-// test('archive from tree', t => {
-//     const generatedSimple = Sieve.fromTree(archive.tree);
-//     t.deepEqual(generatedSimple, archive.simple);
-// });
-
 test('folder to tree', (t) => testToTree(t, folder));
 test('folder from tree', (t) => testFromTree(t, folder));
 
 test('v2 to tree', (t) => testToTree(t, v2, 2));
 test('v2 from tree', (t) => testFromTree(t, v2, 2));
-
-// test('complex to tree', t => testToTree(t, complex, 2));
-// test('complex from tree', t => testFromTree(t, complex, 2));
 
 test('v2 with spamtest only from tree', (t) => testFromTree(t, v2SpamTest, 2));
 

@@ -1,5 +1,6 @@
 import { buildLabelValueObject, invert } from './commons';
 import { LABEL_KEYS, MATCH_KEYS, OPERATOR_KEYS } from './constants';
+import { InvalidInputError, UnsupportedRepresentationError } from './Errors';
 
 function validateTree(tree) {
     let string = '';
@@ -38,18 +39,12 @@ function validateTree(tree) {
         }
 
         if (requiredExtensions.length) {
-            throw {
-                name: 'InvalidInput',
-                message: 'Invalid tree representation: requirements'
-            };
+            throw new InvalidInputError('Invalid tree representation: requirements');
         }
     }
 
     if (!mainNode) {
-        throw {
-            name: 'InvalidInput',
-            message: 'Invalid tree representation: ' + string + ' level'
-        };
+        throw new InvalidInputError(`Invalid tree representation: ${string} level`);
     }
 
     return { comment, tree: mainNode };
@@ -110,10 +105,7 @@ function iterateCondition(array, commentComparators) {
         }
 
         if (commentComparator && commentNegate !== negate) {
-            throw {
-                name: 'UnsupportedRepresentation',
-                message: `Comment and computed negation incompatible`
-            };
+            throw new UnsupportedRepresentationError('Comment and computed negation incompatible');
         }
 
         let type = null;
@@ -159,10 +151,9 @@ function buildSimpleParams(comparator, values, negate, commentComparator) {
     if (commentComparator) {
         if (commentComparator === 'starts' || commentComparator === 'ends') {
             if (comparator !== 'Matches') {
-                throw {
-                    name: 'UnsupportedRepresentation',
-                    message: `Comment and computed comparator incompatible: ${comparator} instead of matches`
-                };
+                throw new UnsupportedRepresentationError(
+                    `Comment and computed comparator incompatible: ${comparator} instead of matches`
+                );
             }
 
             comparator = commentComparator[0].toUpperCase() + commentComparator.slice(1);
@@ -173,10 +164,9 @@ function buildSimpleParams(comparator, values, negate, commentComparator) {
                 return value.replace(/\*+$/g, '');
             });
         } else if (comparator.toLowerCase() !== commentComparator) {
-            throw {
-                name: 'UnsupportedRepresentation',
-                message: `Comment and computed comparator incompatible: ${comparator} instead of ${commentComparator}`
-            };
+            throw new UnsupportedRepresentationError(
+                `Comment and computed comparator incompatible: ${comparator} instead of ${commentComparator}`
+            );
         }
     }
 
@@ -198,7 +188,7 @@ function buildSimpleComparator(comparator, negate) {
     comparator = invert(MATCH_KEYS)[comparator];
 
     if (!comparator) {
-        throw { name: 'InvalidInput', message: 'Invalid match keys' };
+        throw new InvalidInputError('Invalid match keys');
     }
 
     if (negate) {
@@ -244,10 +234,7 @@ function iterateAction(array) {
             case 'Reject':
             case 'Redirect':
             default:
-                throw {
-                    name: 'UnsupportedRepresentation',
-                    message: `Unsupported filter representation: ${element.Type}`
-                };
+                throw new UnsupportedRepresentationError(`Unsupported filter representation: ${element.Type}`);
         }
     }
 
@@ -263,10 +250,7 @@ export const fromTree = (tree) => {
     const operator = invert(OPERATOR_KEYS)[tree.If.Type];
 
     if (comment && comment.type && operator !== comment.type) {
-        throw {
-            name: 'UnsupportedRepresentation',
-            message: 'Comment and computed type incompatible'
-        };
+        throw new UnsupportedRepresentationError('Comment and computed type incompatible');
     }
 
     const conditions = iterateCondition(tree.If.Tests, comment && comment.comparators);

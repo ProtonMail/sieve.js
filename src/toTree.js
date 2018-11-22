@@ -1,36 +1,31 @@
 import { escapeCharacters, unique } from './commons';
 import { MATCH_KEYS, OPERATOR_KEYS, TEST_NODES, V1, V2 } from './constants';
+import { InvalidInputError } from './Errors';
 
 function validateSimpleRepresentation(simple) {
     if (['Operator', 'Conditions', 'Actions'].find((key) => !simple[key])) {
-        throw { name: 'InvalidInput', message: 'Invalid simple keys' };
+        throw new InvalidInputError('Invalid simple keys');
     }
 
     if (
         !(simple.Operator instanceof Object && simple.Conditions instanceof Array && simple.Actions instanceof Object)
     ) {
-        throw { name: 'InvalidInput', message: 'Invalid simple data types' };
+        throw new InvalidInputError('Invalid simple data types');
     }
 
     if (!simple.Operator.label || !simple.Operator.value) {
-        throw { name: 'InvalidInput', message: 'Invalid simple operator' };
+        throw new InvalidInputError('Invalid simple operator');
     }
 
     for (const condition of simple.Conditions) {
         for (const key of ['Type', 'Comparator']) {
             const value = condition[key];
             if (!value || !value.label || !value.value) {
-                throw {
-                    name: 'InvalidInput',
-                    message: 'Invalid simple conditions'
-                };
+                throw new InvalidInputError('Invalid simple conditions');
             }
         }
         if (!condition.Values) {
-            throw {
-                name: 'InvalidInput',
-                message: 'Invalid simple conditions'
-            };
+            throw new InvalidInputError('Invalid simple conditions');
         }
     }
 
@@ -41,7 +36,7 @@ function validateSimpleRepresentation(simple) {
         typeof simple.Actions.Mark.Read === 'undefined' ||
         typeof simple.Actions.Mark.Starred === 'undefined'
     ) {
-        throw { name: 'InvalidInput', message: 'Invalid simple actions' };
+        throw new InvalidInputError('Invalid simple actions');
     }
 
     return simple;
@@ -158,7 +153,7 @@ function buildComparatorComment(comparators, type) {
     } else if (type === 'AnyOf') {
         commentArray.push(' @type or');
     } else {
-        throw new Error('Undefined type ' + type);
+        throw new TypeError('Undefined type ' + type);
     }
 
     commentArray.push(...comparators.map((comparator) => ' @comparator ' + comparator));
@@ -195,10 +190,7 @@ export const toTree = (simple, version) => {
         }
 
         if (!MATCH_KEYS[comparator] || MATCH_KEYS[comparator] === MATCH_KEYS.default) {
-            throw {
-                name: 'InvalidInput',
-                message: 'Unrecognized simple condition: ' + condition.Comparator.value
-            };
+            throw new InvalidInputError('Unrecognized simple condition: ' + condition.Comparator.value);
         }
 
         condition.Values = condition.Values.map((value) => {
