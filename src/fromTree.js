@@ -4,61 +4,70 @@ import { InvalidInputError, UnsupportedRepresentationError } from './Errors';
 
 /**
  * Validate the tree and extracts the main node.
- * @param {object[]} tree - the tree
- * @return {{comment: {Text: string, Type: 'Comment'}, tree: {If: object, Then: array, Else: *, Type: string}}}
+ * @param {Object[]} tree - the tree
+ * @return {{comment: {Text: String, Type: 'Comment'}, tree: {If: Object, Then: Array, Else: *, Type: String}}}
  */
 function extractMainNode(tree) {
-    let string = '';
-
-    let mainNode;
-    const requiredExtensions = ['fileinto', 'imap4flags'];
-    let comment;
     if (tree instanceof Array) {
-        const treeLength = tree.length;
-        for (let i = 0; i < treeLength; i++) {
-            const node = tree[i];
-            if (node.Type === 'Require') {
-                let extensionIndex = requiredExtensions.length;
-                while (extensionIndex--) {
-                    const extension = requiredExtensions[extensionIndex];
-                    if (node.List.indexOf(extension) > -1) {
-                        requiredExtensions.splice(extensionIndex, 1);
+        const { mainNode, comment, errorLevel, requiredExtensions } = tree.reduce(
+            (acc, node) => {
+                if (node.Type === 'Require') {
+                    let extensionIndex = acc.requiredExtensions.length;
+                    while (extensionIndex--) {
+                        const extension = acc.requiredExtensions[extensionIndex];
+                        if (node.List.indexOf(extension) > -1) {
+                            acc.requiredExtensions.splice(extensionIndex, 1);
+                        }
                     }
+                    return acc;
                 }
-            } else if (node.Type === 'If') {
-                // must have all these keys. All of them must be array (so none == false)
-                string = ['If', 'Then', 'Type'].find((key) => !node[key]);
-                if (!string) {
-                    if (!node.If.Tests) {
-                        string = 'Tests';
-                    } else {
-                        mainNode = node;
+
+                if (node.Type === 'If') {
+                    // must have all these keys. All of them must be array (so none == false)
+                    // the error will always be from the last node, which is totally expected from a simple generated tree.
+                    acc.errorLevel = ['If', 'Then', 'Type'].find((key) => !node[key]);
+                    if (!acc.errorLevel) {
+                        if (!node.If.Tests) {
+                            acc.errorLevel = 'Tests';
+                            return acc;
+                        }
+
+                        acc.mainNode = node;
                     }
+                    return acc;
                 }
-            } else if (
-                node.Type === 'Comment' &&
-                node.Text.match(/^\/\*\*\r\n(?:\s\*\s@(?:type|comparator)[^\r]+\r\n)+\s\*\/$/)
-            ) {
-                comment = node;
+
+                if (
+                    node.Type === 'Comment' &&
+                    node.Text.match(/^\/\*\*\r\n(?:\s\*\s@(?:type|comparator)[^\r]+\r\n)+\s\*\/$/)
+                ) {
+                    acc.comment = node;
+                    return acc;
+                }
+                return acc;
+            },
+            {
+                requiredExtensions: ['fileinto', 'imap4flags']
             }
+        );
+
+        if (!mainNode) {
+            throw new InvalidInputError(`Invalid tree representation: ${errorLevel} level`);
         }
 
         if (requiredExtensions.length) {
             throw new InvalidInputError('Invalid tree representation: requirements');
         }
+        return { comment, tree: mainNode };
     }
 
-    if (!mainNode) {
-        throw new InvalidInputError(`Invalid tree representation: ${string} level`);
-    }
-
-    return { comment, tree: mainNode };
+    throw new UnsupportedRepresentationError('Array expected.');
 }
 
 /**
  * Parses the comparator comment, to retrieve the expected comparators.
- * @param {{Type: 'Comment', Text: string}|null} comparator the comparator comment.
- * @return {{comparators: string[], type: string}|undefined}
+ * @param {{Type: 'Comment', Text: String}} [comparator=] the comparator comment.
+ * @return {{comparators: String[], type: String}|undefined}
  */
 function parseComparatorComment(comparator) {
     if (!comparator) {
@@ -68,36 +77,52 @@ function parseComparatorComment(comparator) {
     const text = comparator.Text;
     const chunks = text.split('\r\n *');
 
-    return chunks.reduce(
-        ({ type, comparators }, chunk) => {
+    const mapAnnotation = {
+        and: 'all',
+        or: 'any'
+    };
+
+    const ret = chunks.reduce(
+        (acc, chunk) => {
             const res = chunk.match(/\s@(\w*)\s(.*)$/);
             if (res) {
                 let [, annotationType, value] = res; // skipping first value
 
                 if (annotationType === 'type') {
-                    if (value === 'and') {
-                        value = 'all';
-                    } else if (value === 'or') {
-                        value = 'any';
-                    } else {
-                        throw new InvalidInputError('Unknown type: ' + value);
+                    const val = mapAnnotation[value];
+
+                    if (!val) {
+                        acc.errors.push({ type: annotationType, value });
+                        return acc;
                     }
-                    return { comparators, type: value };
-                } else if (annotationType === 'comparator') {
-                    return { type, comparators: [...comparators, value.replace('default', 'contains')] };
+
+                    acc.type = val;
+                    return acc;
+                }
+
+                if (annotationType === 'comparator') {
+                    acc.comparators.push(value.replace('default', 'contains'));
+                    return acc;
                 }
             }
-            return { comparators, type };
+            return acc;
         },
-        { comparators: [], type: '' }
+        { comparators: [], type: '', errors: [] }
     );
+
+    if (ret.errors.length) {
+        throw new InvalidInputError(
+            `Unknown ${ret.errors.reduce((acc, { type, value }) => `${acc ? acc + ', ' : ''}${type} "${value}"`, '')}`
+        );
+    }
+    return ret;
 }
 
 /**
  * Parses the different ifs.
- * @param {{Type: string, Test: *, ...}[]} ifConditions
- * @param {string[]} [commentComparators = []] - if known, the commentComparators.
- * @return {{Type: object, Comparator: *, ...}[]} a list of conditions.
+ * @param {{Type: String, Test: *, ...}[]} ifConditions
+ * @param {String[]} [commentComparators = []] - if known, the commentComparators.
+ * @return {{Type: Object, Comparator: *, ...}[]} a list of conditions.
  */
 function parseIfConditions(ifConditions, commentComparators = []) {
     const conditions = [];
@@ -164,11 +189,11 @@ function parseIfConditions(ifConditions, commentComparators = []) {
 
 /**
  * Builds simple parameters.
- * @param {string} comparator
- * @param {string[]} values
- * @param {bool} negate
- * @param {string=} commentComparator - if given, will improve the type determination.
- * @return {{Comparator: {value: string, label: string}, Values: string[]}}
+ * @param {String} comparator
+ * @param {String[]} values
+ * @param {Boolean} negate
+ * @param {String} [commentComparator=] - if given, will improve the type determination.
+ * @return {{Comparator: {value: String, label: String}, Values: String[]}}
  */
 function buildSimpleParams(comparator, values, negate, commentComparator) {
     if (commentComparator) {
@@ -201,10 +226,10 @@ function buildSimpleParams(comparator, values, negate, commentComparator) {
 
 /**
  * Builds a simple condition.
- * @param {string} type - the type (must be in LABEL_KEY)
- * @param {string} comparator - the comparator.
+ * @param {String} type - the type (must be in LABEL_KEY)
+ * @param {String} comparator - the comparator.
  * @param {[*]} params - any other params.
- * @return {{Type: object, Comparator: *, ...}}
+ * @return {{Type: Object, Comparator: *, ...}}
  */
 function buildSimpleCondition(type, comparator, params) {
     return {
@@ -216,9 +241,9 @@ function buildSimpleCondition(type, comparator, params) {
 
 /**
  * Builds the simple comparator .
- * @param {string} comparator - the comparator
- * @param {bool} negate - if true, the comparator will be negated.
- * @return {{value: string, label: string}}
+ * @param {String} comparator - the comparator
+ * @param {Boolean} negate - if true, the comparator will be negated.
+ * @return {{value: String, label: String}}
  */
 function buildSimpleComparator(comparator, negate) {
     comparator = invert(MATCH_KEYS)[comparator];
@@ -237,7 +262,7 @@ function buildSimpleComparator(comparator, negate) {
 /**
  * Parse the then nodes to extract the actions.
  * @param {{Type, ...}} thenNodes - all the then nodes.
- * @return {{FileInto: String[], Mark: {Read: boolean, Starred: boolean}, Vacation: string=}}
+ * @return {{FileInto: String[], Mark: {Read: Boolean, Starred: Boolean}, Vacation: String=}}
  */
 function parseThenNodes(thenNodes) {
     const actions = {
@@ -284,8 +309,8 @@ function parseThenNodes(thenNodes) {
 
 /**
  * Transforms a tree into a simple representation.
- * @param {object[]} tree - a list of sieve nodes.
- * @return {{Operator: {label: string, value: string}, Conditions: object[], Actions: {FileInto: Array, Mark: {Read: boolean, Starred: boolean}}}}
+ * @param {Object[]} tree - a list of sieve nodes.
+ * @return {{Operator: {label: String, value: String}, Conditions: Object[], Actions: {FileInto: Array, Mark: {Read: Boolean, Starred: Boolean}}}}
  */
 export const fromTree = (tree) => {
     const validated = extractMainNode(tree);

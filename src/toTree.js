@@ -4,7 +4,7 @@ import { InvalidInputError } from './Errors';
 
 /**
  * Validates and correct the received simple representation.
- * @param simple
+ * @param {{Operator: *, Conditions: *, Actions: *}} simple
  * @return {*}
  */
 function correctSimpleRepresentation(simple) {
@@ -50,10 +50,10 @@ function correctSimpleRepresentation(simple) {
 
 /**
  * Builds an address test.
- * @param {string[]} headers
- * @param {string[]} keys
- * @param {string} match
- * @return {{Headers: string[], Keys: string[], Match: {Type: string}, Format: {Type: string}, Type: string, AddressPart: {Type: string}}}
+ * @param {String[]} headers
+ * @param {String[]} keys
+ * @param {String} match
+ * @return {{Headers: String[], Keys: String[], Match: {Type: String}, Type: String, AddressPart: {Type: String}}}
  */
 function buildAddressTest(headers, keys, match) {
     return {
@@ -74,9 +74,9 @@ function buildAddressTest(headers, keys, match) {
 
 /**
  * Builds a setflag action, for read or starred.
- * @param {bool} read
- * @param {bool} starred
- * @return {{Flags: string[], Type: string}}
+ * @param {Boolean} read
+ * @param {Boolean} starred
+ * @return {{Flags: String[], Type: String}}
  */
 function buildSetflagThen(read, starred) {
     const flags = [];
@@ -94,9 +94,9 @@ function buildSetflagThen(read, starred) {
 
 /**
  * Builds a vacation action.
- * @param {string} message - the message to be sent.
- * @param {int} version - the sieve version.
- * @return {{Message: string, Args: {MIMEType: string}, Type: string}}
+ * @param {String} message - the message to be sent.
+ * @param {Number} version - the sieve version.
+ * @return {{Message: String, Args: {MIMEType: String}, Type: String}}
  */
 function buildVacationAction(message, version) {
     return {
@@ -108,8 +108,8 @@ function buildVacationAction(message, version) {
 
 /**
  * Builds a fileinto action.
- * @param {string} name - the folder.
- * @return {{Name: string, Type: string}}
+ * @param {String} name - the folder.
+ * @return {{Name: String, Type: String}}
  */
 function buildFileintoAction(name) {
     return {
@@ -120,10 +120,10 @@ function buildFileintoAction(name) {
 
 /**
  * Builds a simple test.
- * @param {string[]} headers - a list of header.
- * @param {string[]} keys - the keys.
- * @param {string} match - the match value.
- * @return {{Headers: string[], Keys: string[], Match: {Type: string}, Format: {Type: string}, Type: string}}
+ * @param {String[]} headers - a list of header.
+ * @param {String[]} keys - the keys.
+ * @param {String} match - the match value.
+ * @return {{Headers: String[], Keys: String[], Format: {Type: String}, Type: String}}
  */
 function buildSimpleHeaderTest(headers, keys, match) {
     return {
@@ -142,7 +142,7 @@ function buildSimpleHeaderTest(headers, keys, match) {
 /**
  * Negates a given test.
  * @param {*} test an already computer test.
- * @return {{Test: *, Type: string}}
+ * @return {{Test: *, Type: String}}
  */
 function buildTestNegate(test) {
     return {
@@ -153,9 +153,9 @@ function buildTestNegate(test) {
 
 /**
  * Builds a require node.
- * @param {string[]} requires - the extensions to require.
- * @param {string[]} mandatory - the extensions to require anyway.
- * @return {{List: string[], Type: 'Require'}}
+ * @param {String[]} requires - the extensions to require.
+ * @param {String[]} mandatory - the extensions to require anyway.
+ * @return {{List: String[], Type: 'Require'}}
  */
 function buildSieveRequire(requires, mandatory = ['fileinto', 'imap4flags']) {
     return {
@@ -166,8 +166,8 @@ function buildSieveRequire(requires, mandatory = ['fileinto', 'imap4flags']) {
 
 /**
  * Builds the tree.
- * @param {{requires: string[], comparators: string[], type: string, tests: {}, thens: []}} parameters - the different parameters.
- * @param {int} version - the sieve version.
+ * @param {{requires: String[], comparators: String[], type: String, tests: {}, thens: []}} parameters - the different parameters.
+ * @param {Number} version - the sieve version.
  * @return {Array}
  */
 function buildBasicTree(parameters, version) {
@@ -201,9 +201,9 @@ function buildBasicTree(parameters, version) {
 
 /**
  * Build the comment node from a comparator.
- * @param {string[]} comparators - the comparators.
- * @param {string} type - the type. Either AllOf or AnyOf
- * @return {{Text: string, Type: string}}
+ * @param {String[]} comparators - the comparators.
+ * @param {String} type - the type. Either AllOf or AnyOf
+ * @return {{Text: String, Type: String}}
  */
 function buildComparatorComment(comparators, type) {
     const commentArray = ['/**'];
@@ -227,9 +227,9 @@ function buildComparatorComment(comparators, type) {
 
 /**
  * Build match and values from comparator and condition.
- * @param {string} comparator
- * @param {{Values: string}} condition
- * @return {{match: string, values: string[]}}
+ * @param {String} comparator
+ * @param {{Values: String}} condition
+ * @return {{match: String, values: String[]}}
  */
 function buildMatchAndValues(comparator, condition) {
     // starts and ends does not exists in sieve. Replacing it to match.
@@ -256,7 +256,7 @@ function buildMatchAndValues(comparator, condition) {
 /**
  * Transforms a simple representation to a filter tree.
  * @param {{}} simple - the filter representation.
- * @param {int=1} version - the version, either 1 or 2.
+ * @param {Number} [version=1] - the version, either 1 or 2.
  * @return {Array}
  */
 export const toTree = (simple, version) => {
@@ -326,9 +326,9 @@ export const toTree = (simple, version) => {
         {
             type,
             tests,
-            thens: thenBlocks,
             requires,
-            comparators
+            comparators,
+            thens: thenBlocks
         },
         version
     );

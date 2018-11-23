@@ -2,8 +2,8 @@ import { LABEL_KEYS } from './constants';
 
 /**
  * Builds a value label object.
- * @param {string} value - a value (key of LABEL_KEYS).
- * @return {{value: string, label: string}}
+ * @param {String} value - a value (key of LABEL_KEYS).
+ * @return {{value: String, label: String}}
  */
 export const buildLabelValueObject = (value) => ({
     value,
@@ -19,14 +19,14 @@ export const invert = (original) => Object.keys(original).reduce((obj, key) => (
 
 /**
  * Escapces the sieve specific characters. (aka * and ?)
- * @param {string} text
- * @return {string}
+ * @param {String} text
+ * @return {String}
  */
 export const escapeCharacters = (text) => text.replace(/([*?])/g, '\\\\$1');
 
 /**
  * Remove duplicates in array.
  * @param {[]} arr
- * @return {[]} deduplicated array.
+ * @return {[]} deduplicated Array.
  */
 export const unique = (arr) => arr.filter((v, i, a) => a.indexOf(v) === i);

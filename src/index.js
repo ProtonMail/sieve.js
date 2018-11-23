@@ -27,7 +27,7 @@ export default {
     /**
      * Transforms a simple representation to a filter tree.
      * @param {{}} simple - the filter representation.
-     * @param {int=1} version - the version, either 1 or 2.
+     * @param {Number=1} version - the version, either 1 or 2.
      * @return {Array}
      */
     toTree: (simple, version = V1) => {
