@@ -2,12 +2,17 @@ import { buildLabelValueObject, invert } from './commons';
 import { LABEL_KEYS, MATCH_KEYS, OPERATOR_KEYS } from './constants';
 import { InvalidInputError, UnsupportedRepresentationError } from './Errors';
 
-function validateTree(tree) {
+/**
+ * Validate the tree and extracts the main node.
+ * @param {object[]} tree - the tree
+ * @return {{comment: {Text: string, Type: 'Comment'}, tree: {If: object, Then: array, Else: *, Type: string}}}
+ */
+function extractMainNode(tree) {
     let string = '';
 
-    let mainNode = null;
+    let mainNode;
     const requiredExtensions = ['fileinto', 'imap4flags'];
-    let comment = null;
+    let comment;
     if (tree instanceof Array) {
         const treeLength = tree.length;
         for (let i = 0; i < treeLength; i++) {
@@ -50,45 +55,55 @@ function validateTree(tree) {
     return { comment, tree: mainNode };
 }
 
-function iterateComparator(comparator) {
+/**
+ * Parses the comparator comment, to retrieve the expected comparators.
+ * @param {{Type: 'Comment', Text: string}|null} comparator the comparator comment.
+ * @return {{comparators: string[], type: string}|undefined}
+ */
+function parseComparatorComment(comparator) {
     if (!comparator) {
-        return null;
+        return;
     }
 
     const text = comparator.Text;
     const chunks = text.split('\r\n *');
 
     return chunks.reduce(
-        (carry, chunk) => {
+        ({ type, comparators }, chunk) => {
             const res = chunk.match(/\s@(\w*)\s(.*)$/);
             if (res) {
-                let [, annotationType, value] = res;
+                let [, annotationType, value] = res; // skipping first value
 
                 if (annotationType === 'type') {
                     if (value === 'and') {
                         value = 'all';
                     } else if (value === 'or') {
                         value = 'any';
+                    } else {
+                        throw new InvalidInputError('Unknown type: ' + value);
                     }
-                    carry.type = value;
+                    return { comparators, type: value };
                 } else if (annotationType === 'comparator') {
-                    carry.comparators.push(value.replace('default', 'contains'));
+                    return { type, comparators: [...comparators, value.replace('default', 'contains')] };
                 }
             }
-            return carry;
+            return { comparators, type };
         },
         { comparators: [], type: '' }
     );
 }
 
-function iterateCondition(array, commentComparators) {
-    if (!commentComparators) {
-        commentComparators = [];
-    }
+/**
+ * Parses the different ifs.
+ * @param {{Type: string, Test: *, ...}[]} ifConditions
+ * @param {string[]} [commentComparators = []] - if known, the commentComparators.
+ * @return {{Type: object, Comparator: *, ...}[]} a list of conditions.
+ */
+function parseIfConditions(ifConditions, commentComparators = []) {
     const conditions = [];
 
-    for (let index = 0; index < array.length; index++) {
-        let element = array[index];
+    for (let index = 0; index < ifConditions.length; index++) {
+        let element = ifConditions[index];
         let commentComparator = commentComparators[index];
 
         let commentNegate;
@@ -108,8 +123,8 @@ function iterateCondition(array, commentComparators) {
             throw new UnsupportedRepresentationError('Comment and computed negation incompatible');
         }
 
-        let type = null;
-        let params = null;
+        let type;
+        let params;
 
         switch (element.Type) {
             case 'Exists':
@@ -147,6 +162,14 @@ function iterateCondition(array, commentComparators) {
     return conditions;
 }
 
+/**
+ * Builds simple parameters.
+ * @param {string} comparator
+ * @param {string[]} values
+ * @param {bool} negate
+ * @param {string=} commentComparator - if given, will improve the type determination.
+ * @return {{Comparator: {value: string, label: string}, Values: string[]}}
+ */
 function buildSimpleParams(comparator, values, negate, commentComparator) {
     if (commentComparator) {
         if (commentComparator === 'starts' || commentComparator === 'ends') {
@@ -176,6 +199,13 @@ function buildSimpleParams(comparator, values, negate, commentComparator) {
     };
 }
 
+/**
+ * Builds a simple condition.
+ * @param {string} type - the type (must be in LABEL_KEY)
+ * @param {string} comparator - the comparator.
+ * @param {[*]} params - any other params.
+ * @return {{Type: object, Comparator: *, ...}}
+ */
 function buildSimpleCondition(type, comparator, params) {
     return {
         Type: buildLabelValueObject(type),
@@ -184,6 +214,12 @@ function buildSimpleCondition(type, comparator, params) {
     };
 }
 
+/**
+ * Builds the simple comparator .
+ * @param {string} comparator - the comparator
+ * @param {bool} negate - if true, the comparator will be negated.
+ * @return {{value: string, label: string}}
+ */
 function buildSimpleComparator(comparator, negate) {
     comparator = invert(MATCH_KEYS)[comparator];
 
@@ -198,7 +234,12 @@ function buildSimpleComparator(comparator, negate) {
     return buildLabelValueObject(comparator);
 }
 
-function iterateAction(array) {
+/**
+ * Parse the then nodes to extract the actions.
+ * @param {{Type, ...}} thenNodes - all the then nodes.
+ * @return {{FileInto: String[], Mark: {Read: boolean, Starred: boolean}, Vacation: string=}}
+ */
+function parseThenNodes(thenNodes) {
     const actions = {
         FileInto: [],
         Mark: {
@@ -207,7 +248,7 @@ function iterateAction(array) {
         }
     };
 
-    for (const element of array) {
+    for (const element of thenNodes) {
         switch (element.Type) {
             case 'Keep':
                 break;
@@ -241,19 +282,23 @@ function iterateAction(array) {
     return actions;
 }
 
+/**
+ * Transforms a tree into a simple representation.
+ * @param {object[]} tree - a list of sieve nodes.
+ * @return {{Operator: {label: string, value: string}, Conditions: object[], Actions: {FileInto: Array, Mark: {Read: boolean, Starred: boolean}}}}
+ */
 export const fromTree = (tree) => {
-    const validated = validateTree(tree);
-    tree = validated.tree;
-    tree = JSON.parse(JSON.stringify(tree));
+    const validated = extractMainNode(tree);
+    const validatedTree = JSON.parse(JSON.stringify(validated.tree)); // cloning it.
 
-    const comment = iterateComparator(validated.comment);
-    const operator = invert(OPERATOR_KEYS)[tree.If.Type];
+    const comment = parseComparatorComment(validated.comment);
+    const operator = invert(OPERATOR_KEYS)[validatedTree.If.Type];
 
     if (comment && comment.type && operator !== comment.type) {
         throw new UnsupportedRepresentationError('Comment and computed type incompatible');
     }
 
-    const conditions = iterateCondition(tree.If.Tests, comment && comment.comparators);
+    const conditions = parseIfConditions(validatedTree.If.Tests, comment && comment.comparators);
 
     return {
         Operator: {
@@ -261,6 +306,6 @@ export const fromTree = (tree) => {
             value: operator
         },
         Conditions: [...conditions],
-        Actions: iterateAction(tree.Then)
+        Actions: parseThenNodes(validatedTree.Then)
     };
 };
