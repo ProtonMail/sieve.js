@@ -3,18 +3,21 @@ import { MATCH_KEYS, OPERATOR_KEYS, TEST_NODES, V1, V2 } from './constants';
 import { InvalidInputError } from './Errors';
 
 /**
- * Validates and correct the received simple representation.
+ * Validates the received simple representation.
  * @param {{Operator: *, Conditions: *, Actions: *}} simple
  * @return {*}
  */
-function correctSimpleRepresentation(simple) {
-    if (['Operator', 'Conditions', 'Actions'].find((key) => !simple[key])) {
+function validateSimpleRepresentation(simple) {
+    if (['Operator', 'Conditions', 'Actions'].some((key) => !simple[key])) {
         throw new InvalidInputError('Invalid simple keys');
     }
 
     if (
-        !// beware the !
-        (simple.Operator instanceof Object && simple.Conditions instanceof Array && simple.Actions instanceof Object)
+        !/* beware the not */ (
+            simple.Operator instanceof Object &&
+            Array.isArray(simple.Conditions) &&
+            simple.Actions instanceof Object
+        )
     ) {
         throw new InvalidInputError('Invalid simple data types');
     }
@@ -23,21 +26,24 @@ function correctSimpleRepresentation(simple) {
         throw new InvalidInputError('Invalid simple operator');
     }
 
-    for (const condition of simple.Conditions) {
-        for (const key of ['Type', 'Comparator']) {
-            const value = condition[key];
-            if (!value || !value.label || !value.value) {
-                throw new InvalidInputError('Invalid simple conditions');
-            }
+    simple.Conditions.forEach((condition) => {
+        if (
+            ['Type', 'Comparator'].some((key) => {
+                const value = condition[key];
+                return !value || !value.label || !value.value;
+            })
+        ) {
+            throw new InvalidInputError('Invalid simple conditions');
         }
+
         if (!condition.Values) {
             throw new InvalidInputError('Invalid simple conditions');
         }
-    }
+    });
 
     if (
         !simple.Actions.FileInto ||
-        !(simple.Actions.FileInto instanceof Array) ||
+        !Array.isArray(simple.Actions.FileInto) ||
         !simple.Actions.Mark ||
         typeof simple.Actions.Mark.Read === 'undefined' ||
         typeof simple.Actions.Mark.Starred === 'undefined'
@@ -228,29 +234,61 @@ function buildComparatorComment(comparators, type) {
 /**
  * Build match and values from comparator and condition.
  * @param {String} comparator
- * @param {{Values: String}} condition
+ * @param {{Values: String[]}} condition
  * @return {{match: String, values: String[]}}
  */
 function buildMatchAndValues(comparator, condition) {
     // starts and ends does not exists in sieve. Replacing it to match.
-    condition.Values = condition.Values.map((value) => {
+    const values = condition.Values.map((value) => {
         const escaped = escapeCharacters(value);
-        switch (comparator) {
-            case 'starts':
-                return ''.concat(escaped, '*');
-            case 'ends':
-                return ''.concat('*', value);
-            default:
-                return value;
+        if (comparator === 'starts') {
+            return ''.concat(escaped, '*');
         }
+
+        if (comparator === 'ends') {
+            return ''.concat('*', value);
+        }
+
+        return value;
     });
 
-    comparator = comparator === 'starts' || comparator === 'ends' ? 'matches' : comparator;
-
     return {
-        match: MATCH_KEYS[comparator],
-        values: unique(condition.Values)
+        values,
+        match: MATCH_KEYS[comparator === 'starts' || comparator === 'ends' ? 'matches' : comparator]
     };
+}
+
+/**
+ * Prepare comparator.
+ * @param {String} comparator
+ * @return {{comparator: String, negate: Boolean}}
+ */
+function prepareComparator(comparator) {
+    if (comparator.startsWith('!')) {
+        return {
+            negate: true,
+            comparator: comparator.substring(1)
+        };
+    }
+    return {
+        comparator,
+        negate: false
+    };
+}
+
+/**
+ * Prepare the comment.
+ * @param {String} comparator the comparator.
+ * @param {String} type the type of the current node.
+ * @param {Boolean} negate the boolean.
+ * @return {String}
+ */
+function prepareComment(comparator, type, negate) {
+    const negation = negate ? '!' : '';
+    if (type === 'attachments') {
+        return negation + 'default';
+    }
+    return negation + comparator;
 }
 
 /**
@@ -260,8 +298,7 @@ function buildMatchAndValues(comparator, condition) {
  * @return {Array}
  */
 export const toTree = (simple, version) => {
-    simple = correctSimpleRepresentation(simple);
-    simple = JSON.parse(JSON.stringify(simple));
+    validateSimpleRepresentation(simple);
 
     const type = OPERATOR_KEYS[simple.Operator.value];
     const tests = [];
@@ -269,20 +306,9 @@ export const toTree = (simple, version) => {
     const requires = [];
     const comparators = [];
 
-    for (const condition of simple.Conditions) {
-        let comparator = condition.Comparator.value;
-        let comment = comparator;
-
-        // if the type is attachment, then the value have to be changed from  [!]contains to [!]default
-        if (condition.Type.value === 'attachments') {
-            comment = (comment.startsWith('!') ? '!' : '') + 'default';
-        }
-        comparators.push(comment);
-
-        const negate = comparator.startsWith('!');
-        if (negate) {
-            comparator = comparator.substring(1);
-        }
+    simple.Conditions.forEach((condition) => {
+        const { comparator, negate } = prepareComparator(condition.Comparator.value);
+        comparators.push(prepareComment(comparator, condition.Type.value, negate));
 
         if (!MATCH_KEYS[comparator] || MATCH_KEYS[comparator] === MATCH_KEYS.default) {
             throw new InvalidInputError('Unrecognized simple condition: ' + condition.Comparator.value);
@@ -300,14 +326,14 @@ export const toTree = (simple, version) => {
         const test = conditionMap[condition.Type.value] && conditionMap[condition.Type.value]();
 
         tests.push(negate ? buildTestNegate(test) : test);
-    }
+    });
 
     // FileInto:
-    for (const destination of Object.values(simple.Actions.FileInto)) {
+    Object.values(simple.Actions.FileInto).forEach((destination) => {
         if (destination) {
             thenBlocks.push(buildFileintoAction(destination));
         }
-    }
+    });
 
     // Mark: (needs to only be included if flags are not false)
     if (simple.Actions.Mark.Read || simple.Actions.Mark.Starred) {

@@ -11,7 +11,7 @@ export default {
      * @return {{}} - the sieve representation.
      * @param {[]} tree - a filter tree.
      */
-    fromTree: (tree) => {
+    fromTree(tree) {
         try {
             return SimpleFromTree.fromTree(tree);
         } catch (exception) {
@@ -30,7 +30,7 @@ export default {
      * @param {Number=1} version - the version, either 1 or 2.
      * @return {Array}
      */
-    toTree: (simple, version = V1) => {
+    toTree(simple, version = V1) {
         try {
             return SimpleToTree.toTree(simple, version);
         } catch (exception) {

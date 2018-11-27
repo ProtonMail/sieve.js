@@ -8,7 +8,7 @@ import { InvalidInputError, UnsupportedRepresentationError } from './Errors';
  * @return {{comment: {Text: String, Type: 'Comment'}, tree: {If: Object, Then: Array, Else: *, Type: String}}}
  */
 function extractMainNode(tree) {
-    if (tree instanceof Array) {
+    if (Array.isArray(tree)) {
         const { mainNode, comment, errorLevel, requiredExtensions } = tree.reduce(
             (acc, node) => {
                 if (node.Type === 'Require') {
@@ -86,7 +86,7 @@ function parseComparatorComment(comparator) {
         (acc, chunk) => {
             const res = chunk.match(/\s@(\w*)\s(.*)$/);
             if (res) {
-                let [, annotationType, value] = res; // skipping first value
+                const [, annotationType, value] = res; // skipping first value
 
                 if (annotationType === 'type') {
                     const val = mapAnnotation[value];
@@ -119,6 +119,60 @@ function parseComparatorComment(comparator) {
 }
 
 /**
+ * Parse a specific comment annotation
+ * @param {String=} commentComparator
+ * @return {{negate: Boolean=, comparator: String=}}
+ */
+function prepareComment(commentComparator) {
+    if (!commentComparator) {
+        return {};
+    }
+
+    const negate = commentComparator.startsWith('!');
+    return {
+        negate,
+        comparator: negate ? commentComparator.slice(1) : commentComparator
+    };
+}
+
+/**
+ * Prepares single condition.
+ * @param {{Type: string, Test: *=}} element
+ * @return {{negate: boolean, element: *}}
+ */
+function prepareSingleCondition(element) {
+    const negate = element.Type === 'Not';
+    return {
+        negate,
+        element: negate ? element.Test : element
+    };
+}
+
+/**
+ * Prepare the type.
+ * @param {{Type: String=, Headers: *=}} element
+ * @return {string} the type, or ''
+ */
+function prepareType(element) {
+    const hasHeader = ({ Headers }, key, value = true) => Headers.includes(key) && value;
+    const hasAnyHeader = (element, keys, value = true) => keys.some((key) => hasHeader(element, key)) && value;
+
+    const MAP_TYPE = {
+        Exists() {
+            return hasHeader(element, 'X-Attached', 'attachments');
+        },
+        Header() {
+            return hasHeader(element, 'Subject', 'subject');
+        },
+        Address() {
+            return hasHeader(element, 'From', 'subject') || hasAnyHeader(element, ['To', 'Cc', 'Bcc'], 'recipient');
+        }
+    };
+
+    return (MAP_TYPE[element.Type] || (() => false))() || '';
+}
+
+/**
  * Parses the different ifs.
  * @param {{Type: String, Test: *, ...}[]} ifConditions
  * @param {String[]} [commentComparators = []] - if known, the commentComparators.
@@ -128,58 +182,20 @@ function parseIfConditions(ifConditions, commentComparators = []) {
     const conditions = [];
 
     for (let index = 0; index < ifConditions.length; index++) {
-        let element = ifConditions[index];
-        let commentComparator = commentComparators[index];
+        const { comparator: commentComparator, negate: commentNegate } = prepareComment(commentComparators[index]);
 
-        let commentNegate;
-        if (commentComparator) {
-            commentNegate = commentComparator.startsWith('!');
-            if (commentNegate) {
-                commentComparator = commentComparator.slice(1);
-            }
-        }
-
-        const negate = element.Type === 'Not';
-        if (negate) {
-            element = element.Test;
-        }
+        const { element, negate } = prepareSingleCondition(ifConditions[index]);
 
         if (commentComparator && commentNegate !== negate) {
             throw new UnsupportedRepresentationError('Comment and computed negation incompatible');
         }
 
-        let type;
-        let params;
+        const type = prepareType(element);
 
-        switch (element.Type) {
-            case 'Exists':
-                if (element.Headers.indexOf('X-Attached') > -1) {
-                    type = 'attachments';
-                }
-                break;
-
-            case 'Header':
-                if (element.Headers.indexOf('Subject') > -1) {
-                    type = 'subject';
-                }
-                break;
-
-            case 'Address':
-                if (element.Headers.indexOf('From') > -1) {
-                    type = 'sender';
-                } else if (element.Headers.indexOf('To') > -1) {
-                    type = 'recipient';
-                } else if (element.Headers.indexOf('Cc') > -1) {
-                    type = 'recipient';
-                } else if (element.Headers.indexOf('Bcc') > -1) {
-                    type = 'recipient';
-                }
-                break;
-        }
         const comparator = type === 'attachments' ? 'Contains' : element.Match.Type;
         const values = element.Keys || [];
 
-        params = buildSimpleParams(comparator, values, negate, commentComparator);
+        const params = buildSimpleParams(comparator, values, negate, commentComparator);
 
         conditions.push(buildSimpleCondition(type, comparator, params));
     }
@@ -196,26 +212,29 @@ function parseIfConditions(ifConditions, commentComparators = []) {
  * @return {{Comparator: {value: String, label: String}, Values: String[]}}
  */
 function buildSimpleParams(comparator, values, negate, commentComparator) {
-    if (commentComparator) {
-        if (commentComparator === 'starts' || commentComparator === 'ends') {
-            if (comparator !== 'Matches') {
-                throw new UnsupportedRepresentationError(
-                    `Comment and computed comparator incompatible: ${comparator} instead of matches`
-                );
-            }
+    if (commentComparator === 'starts' || commentComparator === 'ends') {
+        if (comparator !== 'Matches') {
+            throw new UnsupportedRepresentationError(
+                `Comment and computed comparator incompatible: ${comparator} instead of matches`
+            );
+        }
 
-            comparator = commentComparator[0].toUpperCase() + commentComparator.slice(1);
-            values = values.map((value) => {
+        return {
+            Comparator: buildSimpleComparator(commentComparator[0].toUpperCase() + commentComparator.slice(1), negate),
+            Values: values.map((value) => {
                 if (commentComparator === 'ends') {
                     return value.replace(/^\*+/g, '');
                 }
                 return value.replace(/\*+$/g, '');
-            });
-        } else if (comparator.toLowerCase() !== commentComparator) {
-            throw new UnsupportedRepresentationError(
-                `Comment and computed comparator incompatible: ${comparator} instead of ${commentComparator}`
-            );
-        }
+            })
+        };
+    }
+
+    if (commentComparator && comparator.toLowerCase() !== commentComparator) {
+        // commentComparator is not required
+        throw new UnsupportedRepresentationError(
+            `Comment and computed comparator incompatible: ${comparator} instead of ${commentComparator}`
+        );
     }
 
     return {
@@ -228,7 +247,7 @@ function buildSimpleParams(comparator, values, negate, commentComparator) {
  * Builds a simple condition.
  * @param {String} type - the type (must be in LABEL_KEY)
  * @param {String} comparator - the comparator.
- * @param {[*]} params - any other params.
+ * @param {*} params - any other params.
  * @return {{Type: Object, Comparator: *, ...}}
  */
 function buildSimpleCondition(type, comparator, params) {
@@ -246,22 +265,17 @@ function buildSimpleCondition(type, comparator, params) {
  * @return {{value: String, label: String}}
  */
 function buildSimpleComparator(comparator, negate) {
-    comparator = invert(MATCH_KEYS)[comparator];
-
-    if (!comparator) {
+    const inverted = invert(MATCH_KEYS);
+    if (!inverted[comparator]) {
         throw new InvalidInputError('Invalid match keys');
     }
 
-    if (negate) {
-        comparator = '!' + comparator;
-    }
-
-    return buildLabelValueObject(comparator);
+    return buildLabelValueObject((negate ? '!' : '') + inverted[comparator]);
 }
 
 /**
  * Parse the then nodes to extract the actions.
- * @param {{Type, ...}} thenNodes - all the then nodes.
+ * @param {{Type, ...}[]} thenNodes - all the then nodes.
  * @return {{FileInto: String[], Mark: {Read: Boolean, Starred: Boolean}, Vacation: String=}}
  */
 function parseThenNodes(thenNodes) {
@@ -273,15 +287,13 @@ function parseThenNodes(thenNodes) {
         }
     };
 
-    for (const element of thenNodes) {
+    thenNodes.forEach((element) => {
         switch (element.Type) {
             case 'Keep':
                 break;
-
             case 'Discard':
                 actions.FileInto.push('trash');
                 break;
-
             case 'FileInto':
                 actions.FileInto.push(element.Name);
                 break;
@@ -297,12 +309,10 @@ function parseThenNodes(thenNodes) {
             case 'Vacation\\Vacation':
                 actions.Vacation = element.Message;
                 break;
-            case 'Reject':
-            case 'Redirect':
             default:
                 throw new UnsupportedRepresentationError(`Unsupported filter representation: ${element.Type}`);
         }
-    }
+    });
 
     return actions;
 }

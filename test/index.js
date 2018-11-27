@@ -10,13 +10,18 @@ import v2Vacation from './fixtures/v2Vacation';
 import Sieve from '../src';
 
 function testToTree(t, { simple, tree }, version = 1) {
+    const copy = JSON.parse(JSON.stringify(simple));
+
     const generatedSimple = Sieve.toTree(simple, version);
     t.deepEqual(generatedSimple, tree);
+    t.deepEqual(copy, simple);
 }
 
 function testFromTree(t, { simple, tree }, version = 1) {
-    const generatedSimple = Sieve.fromTree(tree, version);
+    const copy = JSON.parse(JSON.stringify(tree));
+    const generatedSimple = Sieve.fromTree(tree);
     t.deepEqual(generatedSimple, simple);
+    t.deepEqual(copy, tree);
 }
 
 test('archive to tree', (t) => testToTree(t, archive));
