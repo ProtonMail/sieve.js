@@ -23,13 +23,13 @@
     "homepage": "https://github.com/ProtonMail/sieve.js#readme",
     "dependencies": {},
     "devDependencies": {
-        "ava": "1.0.0-rc.2",
+        "ava": "^0.25.0",
         "eslint": "^5.9.0",
         "eslint-config-synacor": "^3.0.3",
         "esm": "^3.0.84",
         "husky": "^1.2.0",
         "lint-staged": "^8.1.0",
-        "prettier": "^1.15.2"
+        "prettier": "^1.15.3"
     },
     "ava": {
         "require": [
