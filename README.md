@@ -1,6 +1,8 @@
+[![CircleCI](https://circleci.com/gh/ProtonMail/sieve.js.svg?style=svg)](https://circleci.com/gh/ProtonMail/sieve.js)
+
 # Sieve.js
 
-Javascript library to wrap sieve configuration
+JavaScript library to wrap sieve configuration
 
 ### Simple representation
 
@@ -31,4 +33,4 @@ Javascript library to wrap sieve configuration
 
 ## Test
 
-`npm run test`
+`npm test`

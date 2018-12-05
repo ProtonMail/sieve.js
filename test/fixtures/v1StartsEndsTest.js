@@ -1,7 +1,3 @@
-/*
- * Sieve/Tree test inputs
- */
-
 const tree = [
     {
         List: ['fileinto', 'imap4flags'],
@@ -12,14 +8,28 @@ const tree = [
             Tests: [
                 {
                     Headers: ['Subject'],
-                    Keys: ['Order'],
+                    Keys: ['starts with*'],
                     Match: {
-                        Type: 'Contains'
+                        Type: 'Matches'
                     },
                     Format: {
                         Type: 'UnicodeCaseMap'
                     },
                     Type: 'Header'
+                },
+                {
+                    Test: {
+                        Headers: ['Subject'],
+                        Keys: ['*ends with'],
+                        Match: {
+                            Type: 'Matches'
+                        },
+                        Format: {
+                            Type: 'UnicodeCaseMap'
+                        },
+                        Type: 'Header'
+                    },
+                    Type: 'Not'
                 }
             ],
             Type: 'AllOf'
@@ -52,14 +62,25 @@ const simple = {
     },
     Conditions: [
         {
-            Values: ['Order'],
+            Values: ['starts with*'],
             Type: {
                 label: 'Subject',
                 value: 'subject'
             },
             Comparator: {
-                label: 'contains',
-                value: 'contains'
+                label: 'matches',
+                value: 'matches'
+            }
+        },
+        {
+            Values: ['*ends with'],
+            Type: {
+                label: 'Subject',
+                value: 'subject'
+            },
+            Comparator: {
+                label: 'does not match',
+                value: '!matches'
             }
         }
     ],
