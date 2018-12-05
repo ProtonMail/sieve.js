@@ -1,0 +1,10 @@
+version: 2
+jobs:
+   build:
+     docker:
+       - image: circleci/node:11.3.0-stretch-browsers
+     steps:
+       - checkout
+       - run: npm i
+       - run: npm run lint
+       - run: npm test

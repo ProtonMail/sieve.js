@@ -1,26 +1,77 @@
 {
-  "name": "sieve.js",
-  "version": "1.0.1",
-  "description": "Javascript library to wrap sieve configuration",
-  "main": "sieve.js",
-  "directories": {
-    "test": "tests"
-  },
-  "scripts": {
-    "test": "ava"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ProtonMail/sieve.js.git"
-  },
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/ProtonMail/sieve.js/issues"
-  },
-  "homepage": "https://github.com/ProtonMail/sieve.js#readme",
-  "dependencies": {},
-  "devDependencies": {
-    "ava": "1.0.0-rc.2"
-  }
+    "name": "sieve.js",
+    "version": "2.0.0",
+    "description": "Javascript library to wrap sieve configuration",
+    "main": "src/index.js",
+    "module": "src/index.js",
+    "browser": "src/index.js",
+    "directories": {
+        "test": "tests"
+    },
+    "scripts": {
+        "test": "ava",
+        "lint": "eslint src --quiet",
+        "pretty": "prettier -c --write $(find src -type f -name '*.js')"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/ProtonMail/sieve.js.git"
+    },
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/ProtonMail/sieve.js/issues"
+    },
+    "homepage": "https://github.com/ProtonMail/sieve.js#readme",
+    "dependencies": {},
+    "devDependencies": {
+        "ava": "^0.25.0",
+        "eslint": "^5.9.0",
+        "eslint-config-synacor": "^3.0.3",
+        "esm": "^3.0.84",
+        "husky": "^1.2.0",
+        "lint-staged": "^8.1.0",
+        "prettier": "^1.15.3"
+    },
+    "ava": {
+        "require": [
+            "esm"
+        ]
+    },
+    "husky": {
+        "hooks": {
+            "pre-commit": "lint-staged"
+        }
+    },
+    "lint-staged": {
+        "*.js": [
+            "prettier -c --write",
+            "git add"
+        ]
+    },
+    "eslintConfig": {
+        "extends": [
+            "eslint-config-synacor"
+        ],
+        "rules": {
+            "indent": [
+                "error",
+                4,
+                {
+                    "SwitchCase": 1
+                }
+            ],
+            "brace-style": [
+                "error",
+                "1tbs"
+            ],
+            "jsx-quotes": [
+                "error",
+                "prefer-double"
+            ],
+            "lines-around-comment": [
+                0
+            ]
+        }
+    }
 }
