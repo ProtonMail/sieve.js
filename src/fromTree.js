@@ -165,10 +165,9 @@ function prepareType(element) {
             return hasHeader(element, 'Subject', 'subject');
         },
         Address() {
-            return hasHeader(element, 'From', 'subject') || hasAnyHeader(element, ['To', 'Cc', 'Bcc'], 'recipient');
+            return hasHeader(element, 'From', 'sender') || hasAnyHeader(element, ['To', 'Cc', 'Bcc'], 'recipient');
         }
     };
-
     return (MAP_TYPE[element.Type] || (() => false))() || '';
 }
 
@@ -325,7 +324,6 @@ function parseThenNodes(thenNodes) {
 export const fromTree = (tree) => {
     const validated = extractMainNode(tree);
     const validatedTree = JSON.parse(JSON.stringify(validated.tree)); // cloning it.
-
     const comment = parseComparatorComment(validated.comment);
     const operator = invert(OPERATOR_KEYS)[validatedTree.If.Type];
 
@@ -334,7 +332,6 @@ export const fromTree = (tree) => {
     }
 
     const conditions = parseIfConditions(validatedTree.If.Tests, comment && comment.comparators);
-
     return {
         Operator: {
             label: LABEL_KEYS[operator],

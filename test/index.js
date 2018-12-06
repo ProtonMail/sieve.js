@@ -7,6 +7,8 @@ import v1Starts from './fixtures/v1StartsEndsTest';
 import v2Starts from './fixtures/v2StartsEndsTest';
 import v2Attachments from './fixtures/v2Attachments';
 import v2Vacation from './fixtures/v2Vacation';
+import v2From from './fixtures/v2From';
+import v2Complex from './fixtures/v2Complex';
 import Sieve from '../src';
 
 function testToTree(t, { simple, tree }, version = 1) {
@@ -45,3 +47,9 @@ test('v2 attachments from tree', (t) => testFromTree(t, v2Attachments, 2));
 
 test('v2 vacation from tree', (t) => testFromTree(t, v2Vacation, 2));
 test('v2 vacation to tree', (t) => testToTree(t, v2Vacation, 2));
+
+test('v2 From from tree', (t) => testFromTree(t, v2From, 2));
+test('v2 From to tree', (t) => testToTree(t, v2From, 2));
+
+test('v2 Complex from tree', (t) => testFromTree(t, v2Complex, 2));
+test('v2 Complex to tree', (t) => testToTree(t, v2Complex, 2));
