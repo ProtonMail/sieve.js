@@ -3,16 +3,16 @@
  * https://github.com/babel/babel/issues/4480
  *
  * @param {String} name - Name of error
- * @param {ErrorConstructor} BaseClass=Error - the base class of the error.
+ * @param {ErrorConstructor} baseClass=Error - the base class of the error.
  * @returns {Function} Custom error
  */
-const generateError = (name, BaseClass = Error) => {
+const generateError = (name, baseClass = Error) => {
     function CustomError(message) {
         this.message = message;
-        this.stack = new BaseClass().stack;
+        this.stack = new baseClass().stack;
     }
 
-    CustomError.prototype = Object.create(BaseClass.prototype);
+    CustomError.prototype = Object.create(baseClass.prototype);
     CustomError.prototype.name = name;
     return CustomError;
 };

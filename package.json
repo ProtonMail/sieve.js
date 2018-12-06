@@ -1,6 +1,6 @@
 {
     "name": "sieve.js",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "description": "Javascript library to wrap sieve configuration",
     "main": "src/index.js",
     "module": "src/index.js",
@@ -71,6 +71,10 @@
             ],
             "lines-around-comment": [
                 0
+            ],
+            "arrow-body-style": [
+                "off",
+                "as-needed"
             ]
         }
     }
