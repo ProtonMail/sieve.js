@@ -1,4 +1,4 @@
-import { buildLabelValueObject, invert } from './commons';
+import { buildLabelValueObject, invert, unescapeCharacters } from './commons';
 import { LABEL_KEYS, MATCH_KEYS, OPERATOR_KEYS } from './constants';
 import { InvalidInputError, UnsupportedRepresentationError } from './Errors';
 
@@ -193,7 +193,6 @@ function parseIfConditions(ifConditions, commentComparators = []) {
 
         const comparator = type === 'attachments' ? 'Contains' : element.Match.Type;
         const values = element.Keys || [];
-
         const params = buildSimpleParams(comparator, values, negate, commentComparator);
 
         conditions.push(buildSimpleCondition(type, comparator, params));
@@ -221,10 +220,12 @@ function buildSimpleParams(comparator, values, negate, commentComparator) {
         return {
             Comparator: buildSimpleComparator(commentComparator[0].toUpperCase() + commentComparator.slice(1), negate),
             Values: values.map((value) => {
+                const unescaped = unescapeCharacters(value);
+
                 if (commentComparator === 'ends') {
-                    return value.replace(/^\*+/g, '');
+                    return unescaped.slice(1);
                 }
-                return value.replace(/\*+$/g, '');
+                return unescaped.slice(0, -1);
             })
         };
     }

@@ -246,7 +246,7 @@ function buildMatchAndValues(comparator, condition) {
         }
 
         if (comparator === 'ends') {
-            return ''.concat('*', value);
+            return ''.concat('*', escaped);
         }
 
         return value;

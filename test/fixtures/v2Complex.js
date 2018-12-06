@@ -11,8 +11,8 @@ module.exports = {
                     label: 'Subject'
                 },
                 Comparator: {
-                    value: 'contains',
-                    label: 'contains'
+                    value: 'starts',
+                    label: 'begins with'
                 },
                 Values: ['subject']
             },
@@ -22,10 +22,10 @@ module.exports = {
                     label: 'Sender'
                 },
                 Comparator: {
-                    value: 'contains',
-                    label: 'contains'
+                    value: 'starts',
+                    label: 'begins with'
                 },
-                Values: ['sender']
+                Values: ['*?\\sender\\?*']
             },
             {
                 Type: {
@@ -33,10 +33,10 @@ module.exports = {
                     label: 'Recipient'
                 },
                 Comparator: {
-                    value: 'contains',
-                    label: 'contains'
+                    value: 'ends',
+                    label: 'ends with'
                 },
-                Values: ['recipient']
+                Values: ['*?\\recipient\\?*']
             },
             {
                 Type: {
@@ -110,7 +110,7 @@ module.exports = {
         },
         {
             Text:
-                '/**\r\n * @type or\r\n * @comparator contains\r\n * @comparator contains\r\n * @comparator contains\r\n * @comparator default\r\n */',
+                '/**\r\n * @type or\r\n * @comparator starts\r\n * @comparator starts\r\n * @comparator ends\r\n * @comparator default\r\n */',
             Type: 'Comment'
         },
         {
@@ -118,9 +118,9 @@ module.exports = {
                 Tests: [
                     {
                         Headers: ['Subject'],
-                        Keys: ['subject'],
+                        Keys: ['subject*'],
                         Match: {
-                            Type: 'Contains'
+                            Type: 'Matches'
                         },
                         Format: {
                             Type: 'UnicodeCaseMap'
@@ -129,9 +129,9 @@ module.exports = {
                     },
                     {
                         Headers: ['From'],
-                        Keys: ['sender'],
+                        Keys: ['\\\\*\\\\?\\\\sender\\\\\\\\?\\\\**'],
                         Match: {
-                            Type: 'Contains'
+                            Type: 'Matches'
                         },
                         Format: {
                             Type: 'UnicodeCaseMap'
@@ -143,9 +143,9 @@ module.exports = {
                     },
                     {
                         Headers: ['To', 'Cc', 'Bcc'],
-                        Keys: ['recipient'],
+                        Keys: ['*\\\\*\\\\?\\\\recipient\\\\\\\\?\\\\*'],
                         Match: {
-                            Type: 'Contains'
+                            Type: 'Matches'
                         },
                         Format: {
                             Type: 'UnicodeCaseMap'

@@ -18,11 +18,18 @@ export const buildLabelValueObject = (value) => ({
 export const invert = (original) => Object.keys(original).reduce((obj, key) => ({ ...obj, [original[key]]: key }), {});
 
 /**
- * Escapces the sieve specific characters. (aka * and ?)
+ * Escapes the sieve specific characters. (aka *, ? and \)
  * @param {String} text
  * @return {String}
  */
-export const escapeCharacters = (text) => text.replace(/([*?])/g, '\\\\$1');
+export const escapeCharacters = (text) => text.replace(/([*?])/g, '\\$1').replace(/\\/g, '\\\\');
+
+/**
+ * Unescapes the sieve specific characters (*, ? and \)
+ * @param {String} text
+ * @return {String}
+ */
+export const unescapeCharacters = (text) => text.replace(/\\\\/g, '\\').replace(/\\([?*])/g, '$1');
 
 /**
  * Remove duplicates in array.
