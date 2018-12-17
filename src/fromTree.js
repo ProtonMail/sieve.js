@@ -291,7 +291,7 @@ function parseThenNodes(thenNodes) {
         }
     };
 
-    thenNodes.forEach(({ Type, Name, Flags: Flags = [], Message }) => {
+    thenNodes.forEach(({ Type, Name, Flags = [], Message } = {}) => {
         switch (Type) {
             case 'Keep':
                 break;
