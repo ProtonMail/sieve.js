@@ -191,6 +191,10 @@ function parseIfConditions(ifConditions, commentComparators = []) {
 
         const type = prepareType(element);
 
+        if (type !== 'attachments' && (!element || !element.Match)) {
+            throw new UnsupportedRepresentationError('Unsupported test');
+        }
+
         const comparator = type === 'attachments' ? 'Contains' : element.Match.Type;
         const values = element.Keys || [];
         const params = buildSimpleParams(comparator, values, negate, commentComparator);
@@ -300,8 +304,8 @@ function parseThenNodes(thenNodes) {
 
             case 'AddFlag':
                 actions.Mark = {
-                    Read: element.Flags.indexOf('\\Seen') > -1,
-                    Starred: element.Flags.indexOf('\\Flagged') > -1
+                    Read: !!element.Flags && element.Flags.indexOf('\\Seen') > -1,
+                    Starred: !!element.Flags && element.Flags.indexOf('\\Flagged') > -1
                 };
                 break;
 
