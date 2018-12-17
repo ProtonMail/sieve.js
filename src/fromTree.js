@@ -191,12 +191,12 @@ function parseIfConditions(ifConditions, commentComparators = []) {
 
         const type = prepareType(element);
 
-        if (type !== 'attachments' && (!element || !element.Match)) {
+        const { Match, Keys: values = [] } = element || {};
+        if (type !== 'attachments' && !Match) {
             throw new UnsupportedRepresentationError('Unsupported test');
         }
 
-        const comparator = type === 'attachments' ? 'Contains' : element.Match.Type;
-        const values = element.Keys || [];
+        const comparator = type === 'attachments' ? 'Contains' : Match.Type;
         const params = buildSimpleParams(comparator, values, negate, commentComparator);
 
         conditions.push(buildSimpleCondition(type, comparator, params));
@@ -291,30 +291,30 @@ function parseThenNodes(thenNodes) {
         }
     };
 
-    thenNodes.forEach((element) => {
-        switch (element.Type) {
+    thenNodes.forEach(({ Type, Name, Flags: Flags = [], Message }) => {
+        switch (Type) {
             case 'Keep':
                 break;
             case 'Discard':
                 actions.FileInto.push('trash');
                 break;
             case 'FileInto':
-                actions.FileInto.push(element.Name);
+                actions.FileInto.push(Name);
                 break;
 
             case 'AddFlag':
                 actions.Mark = {
-                    Read: !!element.Flags && element.Flags.indexOf('\\Seen') > -1,
-                    Starred: !!element.Flags && element.Flags.indexOf('\\Flagged') > -1
+                    Read: Flags.includes('\\Seen'),
+                    Starred: Flags.includes('\\Flagged')
                 };
                 break;
 
             case 'Vacation':
             case 'Vacation\\Vacation':
-                actions.Vacation = element.Message;
+                actions.Vacation = Message;
                 break;
             default:
-                throw new UnsupportedRepresentationError(`Unsupported filter representation: ${element.Type}`);
+                throw new UnsupportedRepresentationError(`Unsupported filter representation: ${Type}`);
         }
     });
 
