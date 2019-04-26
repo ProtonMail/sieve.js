@@ -1,4 +1,4 @@
-import { buildLabelValueObject, invert, unescapeCharacters } from './commons';
+import { buildLabelValueObject, invert, unescapeCharacters, unescapeVariables } from './commons';
 import { LABEL_KEYS, MATCH_KEYS, OPERATOR_KEYS } from './constants';
 import { InvalidInputError, UnsupportedRepresentationError } from './Errors';
 
@@ -9,7 +9,7 @@ import { InvalidInputError, UnsupportedRepresentationError } from './Errors';
  */
 function extractMainNode(tree) {
     if (Array.isArray(tree)) {
-        const { mainNode, comment, errorLevel, requiredExtensions } = tree.reduce(
+        const { mainNode, comment, errorLevel, requiredExtensions, ifCount } = tree.reduce(
             (acc, node) => {
                 if (node.Type === 'Require') {
                     let extensionIndex = acc.requiredExtensions.length;
@@ -33,25 +33,34 @@ function extractMainNode(tree) {
                         }
 
                         acc.mainNode = node;
+                        acc.ifCount++;
                     }
                     return acc;
                 }
 
-                if (
-                    node.Type === 'Comment' &&
-                    node.Text.match(/^\/\*\*\r\n(?:\s\*\s@(?:type|comparator)[^\r]+\r\n)+\s\*\/$/)
-                ) {
-                    acc.comment = node;
+                if (node.Type === 'Comment') {
+                    if (node.Text.match(/^\/\*\*\r\n(?:\s\*\s@(?:type|comparator)[^\r]+\r\n)+\s\*\/$/)) {
+                        acc.comment = node;
+                    }
+
+                    acc.commentCount++;
                     return acc;
                 }
-                return acc;
+
+                if (node.Type === 'Set' && node.Value === '$' && node.Name === 'dollar') {
+                    return acc;
+                }
+
+                throw new InvalidInputError(`Invalid tree representation: ${node.Type || 'Unknown'} level`);
             },
             {
-                requiredExtensions: ['fileinto', 'imap4flags']
+                requiredExtensions: ['fileinto', 'imap4flags'],
+                ifCount: 0,
+                commentCount: 0
             }
         );
 
-        if (!mainNode) {
+        if (!mainNode || ifCount > 2) {
             throw new InvalidInputError(`Invalid tree representation: ${errorLevel} level`);
         }
 
@@ -214,6 +223,14 @@ function parseIfConditions(ifConditions, commentComparators = []) {
  * @return {{Comparator: {value: String, label: String}, Values: String[]}}
  */
 function buildSimpleParams(comparator, values, negate, commentComparator) {
+    values = values.map((value) => {
+        value = unescapeVariables(value);
+        if (typeof value !== 'string') {
+            throw new UnsupportedRepresentationError(`Unsupported string ${value}`);
+        }
+        return value;
+    });
+
     if (commentComparator === 'starts' || commentComparator === 'ends') {
         if (comparator !== 'Matches') {
             throw new UnsupportedRepresentationError(
@@ -299,6 +316,10 @@ function parseThenNodes(thenNodes) {
                 actions.FileInto.push('trash');
                 break;
             case 'FileInto':
+                Name = unescapeVariables(Name);
+                if (typeof Name !== 'string') {
+                    throw new UnsupportedRepresentationError(`Unsupported string ${Name}`);
+                }
                 actions.FileInto.push(Name);
                 break;
 
@@ -311,6 +332,10 @@ function parseThenNodes(thenNodes) {
 
             case 'Vacation':
             case 'Vacation\\Vacation':
+                Message = unescapeVariables(Message);
+                if (typeof Message !== 'string') {
+                    throw new UnsupportedRepresentationError(`Unsupported string ${Message}`);
+                }
                 actions.Vacation = Message;
                 break;
             default:

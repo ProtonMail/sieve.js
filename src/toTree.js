@@ -1,4 +1,4 @@
-import { escapeCharacters, unique } from './commons';
+import { escapeCharacters, escapeVariables, unique } from './commons';
 import { MATCH_KEYS, OPERATOR_KEYS, TEST_NODES, V1, V2 } from './constants';
 import { InvalidInputError } from './Errors';
 
@@ -100,7 +100,7 @@ function buildSetflagThen(read, starred) {
 
 /**
  * Builds a vacation action.
- * @param {String} message - the message to be sent.
+ * @param {String|{Type: string, Value: string}} message - the message to be sent.
  * @param {Number} version - the sieve version.
  * @return {{Message: String, Args: {MIMEType: String}, Type: String}}
  */
@@ -114,7 +114,7 @@ function buildVacationAction(message, version) {
 
 /**
  * Builds a fileinto action.
- * @param {String} name - the folder.
+ * @param {String|{Type: string, Value: string}} name - the folder.
  * @return {{Name: String, Type: String}}
  */
 function buildFileintoAction(name) {
@@ -172,7 +172,7 @@ function buildSieveRequire(requires, mandatory = ['fileinto', 'imap4flags']) {
 
 /**
  * Builds the tree.
- * @param {{requires: String[], comparators: String[], type: String, tests: {}, thens: []}} parameters - the different parameters.
+ * @param {{requires: String[], comparators: String[], type: String, tests: {}, thens: [], dollarNeeded: boolean}} parameters - the different parameters.
  * @param {Number} version - the sieve version.
  * @return {Array}
  */
@@ -191,6 +191,11 @@ function buildBasicTree(parameters, version) {
 
     if (version === V2) {
         treeStructure.push(...TEST_NODES.spamtest);
+
+        if (parameters.dollarNeeded) {
+            treeStructure.push(...TEST_NODES.dollar);
+        }
+
         treeStructure.push(buildComparatorComment(parameters.comparators, parameters.type));
     }
 
@@ -305,6 +310,7 @@ export const toTree = (simple, version) => {
     const thenBlocks = [];
     const requires = [];
     const comparators = [];
+    let dollarNeeded = false;
 
     simple.Conditions.forEach((condition) => {
         const { comparator, negate } = prepareComparator(condition.Comparator.value);
@@ -314,14 +320,18 @@ export const toTree = (simple, version) => {
             throw new InvalidInputError('Unrecognized simple condition: ' + condition.Comparator.value);
         }
 
-        const { match, values } = buildMatchAndValues(comparator, condition);
-
+        const { match, values: matchValues } = buildMatchAndValues(comparator, condition);
+        const values = matchValues.map(escapeVariables);
         const conditionMap = {
             sender: () => buildAddressTest(['From'], values, match),
             recipient: () => buildAddressTest(['To', 'Cc', 'Bcc'], values, match),
             subject: () => buildSimpleHeaderTest(['Subject'], values, match),
             attachments: () => TEST_NODES.attachment[0]
         };
+
+        if (values.some(value => typeof value !== 'string')) {
+            dollarNeeded = true;
+        }
 
         const test = conditionMap[condition.Type.value] && conditionMap[condition.Type.value]();
 
@@ -331,6 +341,11 @@ export const toTree = (simple, version) => {
     // FileInto:
     Object.values(simple.Actions.FileInto).forEach((destination) => {
         if (destination) {
+            destination = escapeVariables(destination);
+            if (typeof destination === 'object') {
+                dollarNeeded = true;
+            }
+
             thenBlocks.push(buildFileintoAction(destination));
         }
     });
@@ -345,7 +360,11 @@ export const toTree = (simple, version) => {
 
     if (simple.Actions.Vacation) {
         requires.push('vacation');
-        thenBlocks.push(buildVacationAction(simple.Actions.Vacation, version));
+        const message = escapeVariables(simple.Actions.Vacation);
+        if (typeof message === 'object') {
+            dollarNeeded = true;
+        }
+        thenBlocks.push(buildVacationAction(message, version));
     }
 
     return buildBasicTree(
@@ -354,6 +373,7 @@ export const toTree = (simple, version) => {
             tests,
             requires,
             comparators,
+            dollarNeeded,
             thens: thenBlocks
         },
         version
