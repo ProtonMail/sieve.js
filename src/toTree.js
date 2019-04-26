@@ -240,6 +240,13 @@ function buildComparatorComment(comparators, type) {
 function buildMatchAndValues(comparator, condition) {
     // starts and ends does not exists in sieve. Replacing it to match.
     const values = condition.Values.map((value) => {
+        if (value.Type === 'VariableString') {
+            return {
+                ...value,
+                Value: escapeCharacters(value.Value)
+            };
+        }
+
         const escaped = escapeCharacters(value);
         if (comparator === 'starts') {
             return ''.concat(escaped, '*');
