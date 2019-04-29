@@ -37,7 +37,7 @@ export const unescapeCharacters = (text) => text.replace(/\\\\/g, '\\').replace(
  * @return {String|{Value: string, Type: string}}
  */
 export const escapeVariables = (text) => {
-    const regex = /\$({[\w._]*})/g;
+    const regex = /\$({[\w._]+})/g;
     if (!text.match(regex)) {
         return text;
     }
@@ -58,7 +58,7 @@ export const unescapeVariables = (text) => {
         return text;
     }
     const { Value: value, Type: type } = text;
-    if (type !== 'VariableString' || value.match(/\${(?!dollar)[\w._]*}/)) {
+    if (type !== 'VariableString' || value.match(/\${(?!dollar)[\w._]+}/)) {
         return;
     }
 

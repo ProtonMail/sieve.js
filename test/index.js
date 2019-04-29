@@ -10,6 +10,8 @@ import v2Vacation from './fixtures/v2Vacation';
 import v2From from './fixtures/v2From';
 import v2Complex from './fixtures/v2Complex';
 import v2VacationComplex from './fixtures/v2VacationDouble';
+import v2EscapeVariables from './fixtures/v2EscapeVariables';
+import v2VariableManyConditionsComplex from './fixtures/v2VariableManyConditionsComplex';
 import Sieve from '../src';
 
 function testToTree(t, { simple, tree }, version = 1) {
@@ -56,3 +58,9 @@ test('v2 Complex from tree', (t) => testFromTree(t, v2Complex, 2));
 test('v2 Complex to tree', (t) => testToTree(t, v2Complex, 2));
 
 test('v2 Vacation Complex from tree', (t) => testFromTree(t, v2VacationComplex));
+
+test('v2 Complex from tree with many conditions + variables', (t) =>
+    testFromTree(t, v2VariableManyConditionsComplex, 2));
+
+test('v2 escaped variables', (t) => testFromTree(t, v2EscapeVariables, 2));
+test('v2 escaped variables', (t) => testToTree(t, v2EscapeVariables, 2));
