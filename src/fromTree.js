@@ -1,76 +1,68 @@
-import { buildLabelValueObject, invert, unescapeCharacters, unescapeVariables } from './commons';
+import { buildLabelValueObject, findLatest, invert, unescapeCharacters, unescapeVariables } from './commons';
 import { LABEL_KEYS, MATCH_KEYS, OPERATOR_KEYS } from './constants';
 import { InvalidInputError, UnsupportedRepresentationError } from './Errors';
 
 /**
  * Validate the tree and extracts the main node.
- * @param {Object[]} tree - the tree
+ * @param {{Type: String, List: array=, If: Object=, Text: String=, Value: String=, Name: String=}[]} tree - the tree
  * @return {{comment: {Text: String, Type: 'Comment'}, tree: {If: Object, Then: Array, Else: *, Type: String}}}
  */
 function extractMainNode(tree) {
-    if (Array.isArray(tree)) {
-        const { mainNode, comment, errorLevel, requiredExtensions, ifCount } = tree.reduce(
-            (acc, node) => {
-                if (node.Type === 'Require') {
-                    let extensionIndex = acc.requiredExtensions.length;
-                    while (extensionIndex--) {
-                        const extension = acc.requiredExtensions[extensionIndex];
-                        if (node.List.indexOf(extension) > -1) {
-                            acc.requiredExtensions.splice(extensionIndex, 1);
-                        }
-                    }
-                    return acc;
-                }
-
-                if (node.Type === 'If') {
-                    // must have all these keys. All of them must be array (so none == false)
-                    // the error will always be from the last node, which is totally expected from a simple generated tree.
-                    acc.errorLevel = ['If', 'Then', 'Type'].find((key) => !node[key]);
-                    if (!acc.errorLevel) {
-                        if (!node.If.Tests) {
-                            acc.errorLevel = 'Tests';
-                            return acc;
-                        }
-
-                        acc.mainNode = node;
-                        acc.ifCount++;
-                    }
-                    return acc;
-                }
-
-                if (node.Type === 'Comment') {
-                    if (node.Text.match(/^\/\*\*\r\n(?:\s\*\s@(?:type|comparator)[^\r]+\r\n)+\s\*\/$/)) {
-                        acc.comment = node;
-                    }
-
-                    acc.commentCount++;
-                    return acc;
-                }
-
-                if (node.Type === 'Set' && node.Value === '$' && node.Name === 'dollar') {
-                    return acc;
-                }
-
-                throw new InvalidInputError(`Invalid tree representation: ${node.Type || 'Unknown'} level`);
-            },
-            {
-                requiredExtensions: ['fileinto', 'imap4flags'],
-                ifCount: 0,
-                commentCount: 0
-            }
-        );
-
-        if (!mainNode || ifCount > 2) {
-            throw new InvalidInputError(`Invalid tree representation: ${errorLevel} level`);
-        }
-
-        if (requiredExtensions.length) {
-            throw new InvalidInputError('Invalid tree representation: requirements');
-        }
-        return { comment, tree: mainNode };
+    if (!Array.isArray(tree)) {
+        throw new UnsupportedRepresentationError('Array expected.');
     }
 
-    throw new UnsupportedRepresentationError('Array expected.');
+    const typed = tree.reduce(
+        (acc, tree) => {
+            const type = tree.Type;
+            const elt = [...(acc[type] || []), tree];
+            return { ...acc, [type]: elt };
+        },
+        {
+            Set: [],
+            If: [],
+            Comment: [],
+            Require: []
+        }
+    );
+
+    if (Object.keys(typed).some((type) => !['Require', 'If', 'Comment', 'Set'].includes(type))) {
+        throw new InvalidInputError(`Invalid tree representation: Invalid node types.`);
+    }
+
+    if (typed.Set.filter(({ Value, Name }) => Value === '$' && Name === 'dollar').length !== typed.Set.length) {
+        throw new InvalidInputError(`Invalid tree representation: Invalid set node.`);
+    }
+
+    if (typed.If.length > 2) {
+        throw new InvalidInputError(`Invalid tree representation: too many if blocks`);
+    }
+    if (typed.Comment.length > 2) {
+        throw new InvalidInputError(`Invalid tree representation: too many comments blocks`);
+    }
+
+    const missingExtensions = typed.Require.reduce(
+        (requiredExtensions, { List }) => {
+            return requiredExtensions.filter((extension) => !List.includes(extension));
+        },
+        ['fileinto', 'imap4flags']
+    );
+
+    if (missingExtensions.length) {
+        throw new InvalidInputError('Invalid tree representation: requirements');
+    }
+
+    const mainNode = findLatest(typed.If, ({ If: ifBlock, Then: thenBlock }) => thenBlock && ifBlock && ifBlock.Tests);
+
+    if (!mainNode) {
+        throw new InvalidInputError('Invalid tree representation');
+    }
+
+    const comment = findLatest(typed.Comment, ({ Text }) =>
+        Text.match(/^\/\*\*\r\n(?:\s\*\s@(?:type|comparator)[^\r]+\r\n)+\s\*\/$/)
+    );
+
+    return { comment, tree: mainNode };
 }
 
 /**
@@ -217,14 +209,14 @@ function parseIfConditions(ifConditions, commentComparators = []) {
 /**
  * Builds simple parameters.
  * @param {String} comparator
- * @param {String[]} values
+ * @param {(String|{Value: String, Type: String})[]} values
  * @param {Boolean} negate
  * @param {String} [commentComparator=] - if given, will improve the type determination.
  * @return {{Comparator: {value: String, label: String}, Values: String[]}}
  */
 function buildSimpleParams(comparator, values, negate, commentComparator) {
-    values = values.map((value) => {
-        value = unescapeVariables(value);
+    const unescapedValues = values.map((escaped) => {
+        const value = unescapeVariables(escaped);
         if (typeof value !== 'string') {
             throw new UnsupportedRepresentationError(`Unsupported string ${value}`);
         }
@@ -240,7 +232,7 @@ function buildSimpleParams(comparator, values, negate, commentComparator) {
 
         return {
             Comparator: buildSimpleComparator(commentComparator[0].toUpperCase() + commentComparator.slice(1), negate),
-            Values: values.map((value) => {
+            Values: unescapedValues.map((value) => {
                 const unescaped = unescapeCharacters(value);
 
                 if (commentComparator === 'ends') {
@@ -260,7 +252,7 @@ function buildSimpleParams(comparator, values, negate, commentComparator) {
 
     return {
         Comparator: buildSimpleComparator(comparator, negate),
-        Values: values
+        Values: unescapedValues
     };
 }
 
@@ -308,39 +300,36 @@ function parseThenNodes(thenNodes) {
         }
     };
 
-    thenNodes.forEach(({ Type, Name, Flags = [], Message } = {}) => {
-        switch (Type) {
-            case 'Keep':
-                break;
-            case 'Discard':
-                actions.FileInto.push('trash');
-                break;
-            case 'FileInto':
-                Name = unescapeVariables(Name);
-                if (typeof Name !== 'string') {
-                    throw new UnsupportedRepresentationError(`Unsupported string ${Name}`);
-                }
-                actions.FileInto.push(Name);
-                break;
-
-            case 'AddFlag':
-                actions.Mark = {
-                    Read: Flags.includes('\\Seen'),
-                    Starred: Flags.includes('\\Flagged')
-                };
-                break;
-
-            case 'Vacation':
-            case 'Vacation\\Vacation':
-                Message = unescapeVariables(Message);
-                if (typeof Message !== 'string') {
-                    throw new UnsupportedRepresentationError(`Unsupported string ${Message}`);
-                }
-                actions.Vacation = Message;
-                break;
-            default:
-                throw new UnsupportedRepresentationError(`Unsupported filter representation: ${Type}`);
+    const actionsMap = {
+        Keep: () => {},
+        Discard: () => actions.FileInto.push('trash'),
+        AddFlag: ({ Flags }) =>
+            (actions.Mark = { Read: Flags.includes('\\Seen'), Starred: Flags.includes('\\Flagged') }),
+        FileInto({ Name }) {
+            const unescapedName = unescapeVariables(Name);
+            if (typeof unescapedName !== 'string') {
+                throw new UnsupportedRepresentationError(`Unsupported string ${Name}`);
+            }
+            actions.FileInto.push(unescapedName);
+        },
+        Vacation({ Message }) {
+            const unescapedMessage = unescapeVariables(Message);
+            if (typeof unescapedMessage !== 'string') {
+                throw new UnsupportedRepresentationError(`Unsupported string ${Message}`);
+            }
+            actions.Vacation = unescapedMessage;
         }
+    };
+    actionsMap['Vacation\\Vacation'] = actionsMap.Vacation;
+
+    thenNodes.forEach((node) => {
+        const type = node.Type;
+
+        if (!actionsMap[type]) {
+            throw new UnsupportedRepresentationError(`Unsupported filter representation: ${type}`);
+        }
+
+        actionsMap[type](node);
     });
 
     return actions;

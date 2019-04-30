@@ -12,8 +12,8 @@ export const buildLabelValueObject = (value) => ({
 
 /**
  * Inverts an object.
- * @param {{}} original
- * @return {{}}
+ * @param {Object} original
+ * @return {Object}
  */
 export const invert = (original) => Object.keys(original).reduce((obj, key) => ({ ...obj, [original[key]]: key }), {});
 
@@ -34,7 +34,7 @@ export const unescapeCharacters = (text) => text.replace(/\\\\/g, '\\').replace(
 /**
  * Escapes sieve variables
  * @param {String} text
- * @return {String|{Value: string, Type: string}}
+ * @return {String|{Value: String, Type: String}}
  */
 export const escapeVariables = (text) => {
     const regex = /\$({[\w._]+})/g;
@@ -50,7 +50,7 @@ export const escapeVariables = (text) => {
 
 /**
  * Unescapes sieve variables
- * @param {String|{Value: string, Type: string}} text
+ * @param {String|{Value: string, Type: String}} text
  * @return {String|undefined}
  */
 export const unescapeVariables = (text) => {
@@ -73,3 +73,19 @@ export const unescapeVariables = (text) => {
  * @return {[]} deduplicated Array.
  */
 export const unique = (arr) => arr.filter((v, i, a) => a.indexOf(v) === i);
+
+/**
+ * Find last value that pass the given callback
+ * @param {T[]} arr
+ * @param {function} callback
+ * @return {T}
+ * @template T
+ */
+export const findLatest = (arr, callback) => {
+    let i = arr.length;
+    while (i--) {
+        if (callback(arr[i])) {
+            return arr[i];
+        }
+    }
+};
