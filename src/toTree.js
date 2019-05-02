@@ -1,11 +1,11 @@
-import { escapeCharacters, unique } from './commons';
+import { escapeCharacters, escapeVariables, unique } from './commons';
 import { MATCH_KEYS, OPERATOR_KEYS, TEST_NODES, V1, V2 } from './constants';
 import { InvalidInputError } from './Errors';
 
 /**
  * Validates the received simple representation.
  * @param {{Operator: *, Conditions: *, Actions: *}} simple
- * @return {*}
+ * @return {{Operator: Object, Conditions: Array, Actions: Object}}
  */
 function validateSimpleRepresentation(simple) {
     if (['Operator', 'Conditions', 'Actions'].some((key) => !simple[key])) {
@@ -38,6 +38,11 @@ function validateSimpleRepresentation(simple) {
 
         if (!condition.Values) {
             throw new InvalidInputError('Invalid simple conditions');
+        }
+
+        const { comparator } = prepareComparator(condition.Comparator.value);
+        if (!MATCH_KEYS[comparator] || MATCH_KEYS[comparator] === MATCH_KEYS.default) {
+            throw new InvalidInputError('Unrecognized simple condition: ' + condition.Comparator.value);
         }
     });
 
@@ -100,7 +105,7 @@ function buildSetflagThen(read, starred) {
 
 /**
  * Builds a vacation action.
- * @param {String} message - the message to be sent.
+ * @param {String|{Type: string, Value: string}} message - the message to be sent.
  * @param {Number} version - the sieve version.
  * @return {{Message: String, Args: {MIMEType: String}, Type: String}}
  */
@@ -114,7 +119,7 @@ function buildVacationAction(message, version) {
 
 /**
  * Builds a fileinto action.
- * @param {String} name - the folder.
+ * @param {String|{Type: String, Value: String}} name - the folder.
  * @return {{Name: String, Type: String}}
  */
 function buildFileintoAction(name) {
@@ -147,8 +152,9 @@ function buildSimpleHeaderTest(headers, keys, match) {
 
 /**
  * Negates a given test.
- * @param {*} test an already computer test.
- * @return {{Test: *, Type: String}}
+ * @param {T} test an already computer test.
+ * @return {{Test: T, Type: String}}
+ * @template T
  */
 function buildTestNegate(test) {
     return {
@@ -161,7 +167,7 @@ function buildTestNegate(test) {
  * Builds a require node.
  * @param {String[]} requires - the extensions to require.
  * @param {String[]} mandatory - the extensions to require anyway.
- * @return {{List: String[], Type: 'Require'}}
+ * @return {{List: String[], Type: String}}
  */
 function buildSieveRequire(requires, mandatory = ['fileinto', 'imap4flags']) {
     return {
@@ -172,7 +178,7 @@ function buildSieveRequire(requires, mandatory = ['fileinto', 'imap4flags']) {
 
 /**
  * Builds the tree.
- * @param {{requires: String[], comparators: String[], type: String, tests: {}, thens: []}} parameters - the different parameters.
+ * @param {{requires: String[], comparators: String[], type: String, tests: Object[], thens: [], dollarNeeded: Boolean}} parameters - the different parameters.
  * @param {Number} version - the sieve version.
  * @return {Array}
  */
@@ -191,6 +197,11 @@ function buildBasicTree(parameters, version) {
 
     if (version === V2) {
         treeStructure.push(...TEST_NODES.spamtest);
+
+        if (parameters.dollarNeeded) {
+            treeStructure.push(...TEST_NODES.dollar);
+        }
+
         treeStructure.push(buildComparatorComment(parameters.comparators, parameters.type));
     }
 
@@ -292,6 +303,97 @@ function prepareComment(comparator, type, negate) {
 }
 
 /**
+ * Builds condition block.
+ * @param {Object[]} conditions
+ * @return {{test: Array, comparators: String[], dollarNeeded: Boolean=}}
+ */
+function buildCondition(conditions) {
+    return conditions.reduce(
+        (acc, condition) => {
+            const { comparator, negate } = prepareComparator(condition.Comparator.value);
+            const comparators = [...acc.comparators, prepareComment(comparator, condition.Type.value, negate)];
+
+            const { match, values: matchValues } = buildMatchAndValues(comparator, condition);
+            const values = matchValues.map(escapeVariables);
+            const conditionMap = {
+                sender: () => buildAddressTest(['From'], values, match),
+                recipient: () => buildAddressTest(['To', 'Cc', 'Bcc'], values, match),
+                subject: () => buildSimpleHeaderTest(['Subject'], values, match),
+                attachments: () => TEST_NODES.attachment[0]
+            };
+
+            const dollarNeeded = acc.dollarNeeded || values.some((value) => typeof value !== 'string');
+
+            const test = conditionMap[condition.Type.value] && conditionMap[condition.Type.value]();
+            const tests = [...acc.tests, negate ? buildTestNegate(test) : test];
+
+            return { comparators, dollarNeeded, tests };
+        },
+        {
+            tests: [],
+            comparators: [],
+            dollarNeeded: false
+        }
+    );
+}
+
+/**
+ * Builds fileinto blocks.
+ * @param actions
+ * @return {{dollarNeeded: Boolean=, blocks: Array}}
+ */
+function buildFileInto(actions) {
+    return actions.reduce(
+        (acc, destination) => {
+            if (destination) {
+                destination = escapeVariables(destination);
+
+                return {
+                    dollarNeeded: acc.dollarNeeded || typeof destination === 'object',
+                    blocks: [...acc.blocks, buildFileintoAction(destination)]
+                };
+            }
+            return acc;
+        },
+        {
+            dollarNeeded: false,
+            blocks: []
+        }
+    );
+}
+
+/**
+ * Builds mark blocks.
+ * @param {{Read: Boolean=, Starred: Boolean=}} node
+ * @return {{ blocks: Array}}
+ */
+function buildMark({ Read: read, Starred: starred }) {
+    if (!read && !starred) {
+        return { blocks: [] };
+    }
+
+    return { blocks: [buildSetflagThen(read, starred), { Type: 'Keep' }] };
+}
+
+/**
+ * Build vacation blocks.
+ * @param vacation
+ * @param version
+ * @return {{dollarNeeded: Boolean=, blocks: Array}}
+ */
+function buildVacation(vacation, version) {
+    if (!vacation) {
+        return { blocks: [] };
+    }
+
+    const message = escapeVariables(vacation);
+    return {
+        blocks: [buildVacationAction(message, version)],
+        dollarNeeded: typeof message === 'object'
+    };
+}
+
+/**
  * Transforms a simple representation to a filter tree.
  * @param {{}} simple - the filter representation.
  * @param {Number} [version=1] - the version, either 1 or 2.
@@ -300,61 +402,19 @@ function prepareComment(comparator, type, negate) {
 export const toTree = (simple, version) => {
     validateSimpleRepresentation(simple);
 
-    const type = OPERATOR_KEYS[simple.Operator.value];
-    const tests = [];
-    const thenBlocks = [];
-    const requires = [];
-    const comparators = [];
-
-    simple.Conditions.forEach((condition) => {
-        const { comparator, negate } = prepareComparator(condition.Comparator.value);
-        comparators.push(prepareComment(comparator, condition.Type.value, negate));
-
-        if (!MATCH_KEYS[comparator] || MATCH_KEYS[comparator] === MATCH_KEYS.default) {
-            throw new InvalidInputError('Unrecognized simple condition: ' + condition.Comparator.value);
-        }
-
-        const { match, values } = buildMatchAndValues(comparator, condition);
-
-        const conditionMap = {
-            sender: () => buildAddressTest(['From'], values, match),
-            recipient: () => buildAddressTest(['To', 'Cc', 'Bcc'], values, match),
-            subject: () => buildSimpleHeaderTest(['Subject'], values, match),
-            attachments: () => TEST_NODES.attachment[0]
-        };
-
-        const test = conditionMap[condition.Type.value] && conditionMap[condition.Type.value]();
-
-        tests.push(negate ? buildTestNegate(test) : test);
-    });
-
-    // FileInto:
-    Object.values(simple.Actions.FileInto).forEach((destination) => {
-        if (destination) {
-            thenBlocks.push(buildFileintoAction(destination));
-        }
-    });
-
-    // Mark: (needs to only be included if flags are not false)
-    if (simple.Actions.Mark.Read || simple.Actions.Mark.Starred) {
-        thenBlocks.push(buildSetflagThen(simple.Actions.Mark.Read, simple.Actions.Mark.Starred));
-        thenBlocks.push({
-            Type: 'Keep'
-        });
-    }
-
-    if (simple.Actions.Vacation) {
-        requires.push('vacation');
-        thenBlocks.push(buildVacationAction(simple.Actions.Vacation, version));
-    }
+    const condition = buildCondition(simple.Conditions);
+    const fileInto = buildFileInto(simple.Actions.FileInto);
+    const mark = buildMark(simple.Actions.Mark);
+    const vacation = buildVacation(simple.Actions.Vacation, version);
 
     return buildBasicTree(
         {
-            type,
-            tests,
-            requires,
-            comparators,
-            thens: thenBlocks
+            type: OPERATOR_KEYS[simple.Operator.value],
+            requires: vacation.blocks.length ? ['vacation'] : [],
+            tests: condition.tests,
+            comparators: condition.comparators,
+            dollarNeeded: condition.dollarNeeded || fileInto.dollarNeeded || vacation.dollarNeeded,
+            thens: [...fileInto.blocks, ...mark.blocks, ...vacation.blocks]
         },
         version
     );

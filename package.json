@@ -1,7 +1,7 @@
 {
     "name": "sieve.js",
     "version": "2.0.5",
-    "description": "Javascript library to wrap sieve configuration",
+    "description": "JavaScript library to wrap sieve configuration",
     "main": "src/index.js",
     "module": "src/index.js",
     "browser": "src/index.js",

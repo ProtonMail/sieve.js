@@ -80,5 +80,13 @@ export const TEST_NODES = {
             Headers: ['X-Attached'],
             Type: 'Exists'
         }
+    ],
+    dollar: [
+        {
+            Name: 'dollar',
+            Value: '$',
+            Flags: [],
+            Type: 'Set'
+        }
     ]
 };
