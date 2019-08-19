@@ -25,7 +25,7 @@
     "homepage": "https://github.com/ProtonMail/sieve.js#readme",
     "dependencies": {},
     "devDependencies": {
-        "ava": "^0.25.0",
+        "ava": "^2.3.0",
         "eslint": "^5.9.0",
         "eslint-config-synacor": "^3.0.3",
         "esm": "^3.0.84",
@@ -36,6 +36,12 @@
     "ava": {
         "require": [
             "esm"
+        ],
+        "files": [
+            "test/index.js"
+        ],
+        "src": [
+            "src/**/*"
         ]
     },
     "husky": {
