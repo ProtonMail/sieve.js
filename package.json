@@ -1,5 +1,5 @@
 {
-    "name": "sieve.js",
+    "name": "@protontech/sieve.js",
     "version": "2.0.6",
     "description": "JavaScript library to wrap sieve configuration",
     "main": "src/index.js",
