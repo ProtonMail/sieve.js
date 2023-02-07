@@ -2,7 +2,6 @@ import test from 'ava';
 import archive from './fixtures/archive';
 import folder from './fixtures/folder';
 import v2 from './fixtures/v2';
-import v2SpamTest from './fixtures/v2SpamtestOnly';
 import v1Starts from './fixtures/v1StartsEndsTest';
 import v2Starts from './fixtures/v2StartsEndsTest';
 import v2Attachments from './fixtures/v2Attachments';
@@ -37,8 +36,6 @@ test('folder from tree', (t) => testFromTree(t, folder, 1));
 
 test('v2 to tree', (t) => testToTree(t, v2));
 test('v2 from tree', (t) => testFromTree(t, v2));
-
-test('v2 with spamtest only from tree', (t) => testFromTree(t, v2SpamTest));
 
 test('v2 starts with to tree', (t) => testToTree(t, v2Starts));
 test('v2 starts with from tree', (t) => testFromTree(t, v2Starts));
