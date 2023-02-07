@@ -187,7 +187,7 @@ function buildBasicTree(parameters, version) {
     if (version === V2) {
         treeStructure.push(
             buildSieveRequire(
-                ['include', 'environment', 'variables', 'relational', 'comparator-i;ascii-numeric', 'spamtest'],
+                ['include', 'environment', 'variables', 'relational', 'comparator-i;ascii-numeric'],
                 []
             )
         );
@@ -196,8 +196,6 @@ function buildBasicTree(parameters, version) {
     treeStructure.push(buildSieveRequire(parameters.requires));
 
     if (version === V2) {
-        treeStructure.push(...TEST_NODES.spamtest);
-
         if (parameters.dollarNeeded) {
             treeStructure.push(...TEST_NODES.dollar);
         }
